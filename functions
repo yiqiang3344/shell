@@ -1,0 +1,23 @@
+#!/bin/bash
+replace(){
+    echo $3
+    if [[ $(uname -a | cut -d ' ' -f 1) == "Linux" ]];then
+        sed -i "s/$1/$2/g" $3
+    else
+        sed -i "" "s/$1/$2/g" $3
+    fi
+}
+
+in_array() {
+    local array="$1[@]"; shift
+    local needle=$1; shift
+    local result=1
+    for element in "${!array}"; do
+        if [[ $element == $needle ]]; then
+            result=0
+            break
+        fi
+    done
+    return $result
+}
+
