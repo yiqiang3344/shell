@@ -2,7 +2,7 @@
 
 branch=$1
 var=$2
-root=${3:-~/htdocs/xjd}
+root=${3:-~/docker/code/xjd}
 OLD_IFS="$IFS"
 IFS=","
 array=($var)

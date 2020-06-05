@@ -1,9 +1,9 @@
 #!/bin/bash
 
 branch=$1
-var=${2-'xinyongfei-app-api,xinyongfei-mobile,shoufuyou-task,shoufuyou-notify,shoufuyou-php-lib,shoufuyou-bill-system,shoufuyou-console,xinyongfei-cuishou,xinyongfei-cps,shoufuyou-sms-system,shoufuyou-fund-system'}
+var=${2}
 toBranch=${3-develop}
-root=~/htdocs/xjd
+root=~/docker/code/xjd
 OLD_IFS="$IFS"
 IFS=","
 array=($var)

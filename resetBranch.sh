@@ -3,7 +3,7 @@
 branch=$1
 var=$2
 flag=${3-remove}
-root=~/htdocs/xjd
+root=~/docker/code/xjd
 OLD_IFS="$IFS"
 IFS=","
 array=($var)

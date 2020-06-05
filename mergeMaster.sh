@@ -3,7 +3,7 @@
 branch=$1
 var=${2}
 toBranch=master
-root=~/htdocs/xjd
+root=~/docker/code/xjd
 OLD_IFS="$IFS"
 IFS=","
 array=($var)
