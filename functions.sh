@@ -1,4 +1,6 @@
 #!/bin/bash
+# 通用的函数库
+
 replace(){
     echo $3
     if [[ $(uname -a | cut -d ' ' -f 1) == "Linux" ]];then
