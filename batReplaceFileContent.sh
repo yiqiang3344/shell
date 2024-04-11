@@ -7,6 +7,24 @@ includeArr=($3) #指定的文件名列表，为空则处理目录下所有文件
 ignoreArr=($4)  #忽略的文件名列表，优先以指定文件名列表为准，比如："test1 test2"
 dir=${5-$(pwd)} #文件目录，默认脚本执行目录
 
+in_array() {
+    local array="$1[@]"; shift
+    local needle=$1; shift
+    local result="1"
+    for element in "${!array}"; do
+        echo 1111 $element
+        if [[ $element == $needle ]]; then
+            result="0"
+            break
+        fi
+    done
+    return $result
+}
+in_array includeArr "test"
+
+exit 1
+
+
 if [[ "$(dirname $0)" == "$(pwd)" ]]; then
   . functions.sh
 else

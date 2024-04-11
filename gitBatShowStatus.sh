@@ -1,26 +1,25 @@
 #!/bin/bash
 # 查看指定目录下所有仓库的新增、变动、删除文件信息
-_dir=${1-$(pwd)} #仓库所在目录，默认脚本执行目录
+dir=${1-$(pwd)} #仓库所在目录，默认脚本执行目录
 
-for i in $(ls $_dir); do
-  echo ' '
-  echo '#'$_dir/$i
-  cd $_dir/$i
-  if [ ! -d .git ]; then
-    echo "非git仓库"
-    continue
-  fi
-  _tmpData=$(git status)
-  if [ "$(echo $_tmpData | grep modified:)" != "" ] || [ "$(echo $_tmpData | grep 'Untracked files:')" != "" ] || [ "$(echo $_tmpData | grep deleted:)" != "" ]; then
-    echo $(git status | grep 'On branch')
-    if [ "$(echo $_tmpData | grep modified:)" != "" ]; then
-      echo $(git status | grep modified:)
+handle() {
+  for i in $(ls $1); do
+    currentPath=$1/$i
+    if [ -f $currentPath ]; then
+      continue
     fi
-    if [ "$(echo $_tmpData | grep deleted:)" != "" ]; then
-      echo $(git status | grep deleted:)
+    if [ -d $currentPath ] && [ ! -d $currentPath/.git ]; then
+      handle $currentPath
+      continue
     fi
-    if [ "$(echo $_tmpData | grep 'Untracked files:')" != "" ]; then
-      echo $(git status | grep 'Untracked files:' -A 3)
+    cd $currentPath
+    _tmpData=$(git status)
+    if [ "$(echo $_tmpData | grep "无文件要提交，干净的工作区")" != "" ] ; then
+        continue
     fi
-  fi
-done
+    echo '#'$currentPath
+    git status
+  done
+}
+
+handle $dir
