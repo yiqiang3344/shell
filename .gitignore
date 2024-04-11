@@ -1,3 +1,4 @@
 /.idea
-autossh.cfg.sh
 /wait
+autossh.cfg.sh
+batGetGitlabRepos.cfg.sh
