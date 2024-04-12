@@ -10,6 +10,6 @@
 ## export expectRepos='test,test1'
 ## export ignoreGroup='test,test1'
 ## export ignoreRepos='test,test1'
-. $(dirname $0)/batGetGitlabRepos.cfg.sh
+. $(dirname $0)/batGetGitlabRepos.cfg
 
 python3 $(dirname $0)/batGetGitlabRepos.py "$gitlabAddr" "$gitlabToken" "$gitlabCodeRootPath" "$branch" "$expectGroup" "$expectRepos" "$ignoreGroup" "$ignoreRepos"

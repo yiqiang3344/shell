@@ -8,7 +8,7 @@ host=$1
 ## export sshIp_xxxx = xxxxx
 ## export sshUser_xxxx = xxxxx
 ## export sshPass_xxxx = xxxxx
-. $(dirname $0)/autossh.cfg.sh
+. $(dirname $0)/autossh.cfg
 
 username=$(eval echo '$'"sshUser_$host")
 hostname=$(eval echo '$'"sshIp_$host")
