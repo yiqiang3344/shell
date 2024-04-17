@@ -15,3 +15,4 @@
 - [gitBatTag.sh](gitBatTag.sh) git批量打tag工具
 - [iterm2-recv-zmodem.sh](iterm2-recv-zmodem.sh) item2下载文件插件
 - [iterm2-send-zmodem.sh](iterm2-send-zmodem.sh) item2上传文件插件
+- [sysInfo.sh](sysInfo.sh) 查看系统信息
