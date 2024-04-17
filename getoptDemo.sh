@@ -10,10 +10,10 @@ OPTION
 DESCRIPTION
   方法说明
 EXAMPLES
-  sh getoptDemo.sh -h
-  sh getoptDemo.sh -a 1 -b2 3 4
-  sh getoptDemo.sh --along=1 -b2 3 4
-  sh getoptDemo.sh --along=1 --blong=2 3 4
+  getoptDemo.sh -h
+  getoptDemo.sh -a 1 -b2 3 4
+  getoptDemo.sh --along=1 -b2 3 4
+  getoptDemo.sh --along=1 --blong=2 3 4
 EOF
 }
 getopt -T
