@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # getopt增强版参数解析示例，包括短标识，长标识
 
 help() {

@@ -3,7 +3,7 @@
 - [autossh.sh](autossh.sh) 自动ssh服务器工具
 - [batGetGitlabRepos.sh](batGetGitlabRepos.sh) 批量克隆gitlab仓库工具
 - [batReplaceFileContent.sh](batReplaceFileContent.sh) 批量替换文件内容工具
-- [functions.sh](functions.sh) 常用函数库
+- [functions](functions) 常用函数库
 - [getoptDemo.sh](getoptDemo.sh) getopt使用示例（兼容mac和linux）
 - [gitBatCheckoutBranch.sh](gitBatCheckoutBranch.sh) git批量切分支工具
 - [gitBatCreateBranch.sh](gitBatCreateBranch.sh) git批量创建分支工具

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # 查看centos服务器常用系统信息
 echo "服务器产品名"
 dmidecode | grep "Product Name"

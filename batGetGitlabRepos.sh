@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # 批量拉取gitlab仓库到本地
 
 # 导入配置，需要当前目录自己创建配置文件，格式：

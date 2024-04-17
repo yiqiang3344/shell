@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+# 替换指定文件中的对应文本
+# example:
+# replace test test1 a.txt
+replace() {
+  echo $3
+  if [[ $(uname -a | cut -d ' ' -f 1) == "Linux" ]]; then
+    sed -i "s/$1/$2/g" $3
+  else
+    sed -i "" "s/$1/$2/g" $3
+  fi
+}
+
+# 判断指定文本是否存在在指定数组中
+# example:
+# arr="1 2 3"
+# str="1"
+# in_array arr $str
+in_array() {
+  local array="$1[@]"
+  shift
+  local needle=$1
+  shift
+  local result=1
+  for element in "${!array}"; do
+    if [[ $element == $needle ]]; then
+      result=0
+      break
+    fi
+  done
+  return $result
+}
+
+# 遍历指定目录下所有文件，并调用指定函数处理
+# func(){
+#   echo $1
+# }
+# scandir ~/ func
+scandir() {
+  local dir=$1
+  local callback=$2
+  for i in $(ls $dir); do
+    if [ -d $dir/$i ]; then
+      scandir $dir/$i $callback
+    fi
+    if [ -f $dir/$i ]; then
+      $callback $dir/$i
+    fi
+  done
+}

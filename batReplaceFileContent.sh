@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # 批量替换指定目录下指定文件列表中的文本
 
 from=$1         #原文本
@@ -8,9 +8,9 @@ ignoreArr=($4)  #忽略的文件名列表，优先以指定文件名列表为准
 dir=${5-$(pwd)} #文件目录，默认脚本执行目录
 
 if [[ "$(dirname $0)" == "$(pwd)" ]]; then
-  . functions.sh
+  . functions
 else
-  . $(dirname $0)/functions.sh
+  . $(dirname $0)/functions
 fi
 
 handle() {
