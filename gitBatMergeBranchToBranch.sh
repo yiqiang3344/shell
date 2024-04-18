@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # 批量合并指定目录的指定仓库列表的指定分支到指定分支
+set -u #有未定义的变量时要报错
 
-branch=$1       #源分支
-toBranch=$2     #目标分支
-expectRepos=$3  #期望处理的git仓库名列表，空格分割
-dir=${4-$(pwd)} #仓库所在目录，默认脚本执行目录
+branch=${1:?"源分支不能为空"}    #源分支
+toBranch=${2:?"目标分支不能为空"} #目标分支
+expectRepos=(${3:-})      #期望处理的git仓库名列表，空格分割
+dir=${4:-$(pwd)}          #仓库所在目录，默认脚本执行目录
 
 if [[ "$(dirname $0)" == "$(pwd)" ]]; then
   . functions

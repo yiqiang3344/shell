@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 # 批量删除指定目录下仓库的指定分支，切换为master分支。
+set -u #有未定义的变量时要报错
 
-branch=$1       #分支
-expectRepos=$2  #期望处理的git仓库名列表，空格分割
-delOrigin=$3    #是否删除远程分支
-dir=${4-$(pwd)} #仓库所在目录，默认脚本执行目录
+branch=${1:?"分支不能为空"} #分支
+expectRepos=(${2:-})  #期望处理的git仓库名列表，空格分割
+delOrigin=${3:-""}    #是否删除远程分支
+dir=${4:-$(pwd)}      #仓库所在目录，默认脚本执行目录
 
 if [[ "$(dirname $0)" == "$(pwd)" ]]; then
   . functions

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # getopt增强版参数解析示例，包括短标识，长标识
+set -Eeuo pipefail #有未定义的变量时要报错，报错时停止脚本
 
 help() {
   cat <<EOF

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 查看centos服务器常用系统信息
+set -u #有未定义的变量时要报错
 
 if [[ "$(dirname $0)" == "$(pwd)" ]]; then
   . functions
