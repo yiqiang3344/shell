@@ -21,10 +21,6 @@ if [ -z $gitlabToken ]; then
   echo "\$gitlabToken未配置"
   exit 1
 fi
-if [ -z $gitlabToken ]; then
-  echo "\$gitlabToken未配置"
-  exit 1
-fi
 if [ -z $gitlabCodeRootPath ]; then
   echo "\$gitlabCodeRootPath未配置"
   exit 1
