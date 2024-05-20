@@ -1,0 +1,10 @@
+gfcli:
+  build:
+    name: "go-tools"
+    path: "./bin"
+    arch: "amd64"
+    system: "linux,darwin"
+    mod: "none"
+    packSrc: ""
+    version: ""
+    extra: ""

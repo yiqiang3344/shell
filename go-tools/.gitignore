@@ -1,0 +1,17 @@
+.buildpath
+.hgignore.swp
+.project
+.orig
+.swp
+.idea/
+.settings/
+.vscode/
+**/.DS_Store
+temp/
+main
+init
+nohup.out
+/bin/darwin_amd64
+/bin/linux_amd64
+**/config.local.yaml
+**/config.xinfei.yaml

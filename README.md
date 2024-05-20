@@ -16,3 +16,6 @@
 - [iterm2-recv-zmodem.sh](iterm2-recv-zmodem.sh) item2下载文件插件
 - [iterm2-send-zmodem.sh](iterm2-send-zmodem.sh) item2上传文件插件
 - [sysInfo.sh](sysInfo.sh) 查看系统信息
+- [go-tools-mac](go-tools-mac) go版本工具集mac系统版，源码详情见[go-tools](go-tools/README.MD)，配置文件为[config.yaml](config.yaml)
+  - `./go-tools-mac setGitlabProjectsMember`  给指定用户名的gitlab用户批量设置指定仓库的报告者权限， 通过交互方式输入用户名和仓库名。
+- [go-tools-linux](go-tools-linux) go版本工具集linux系统版
