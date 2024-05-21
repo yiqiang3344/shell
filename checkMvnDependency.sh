@@ -161,7 +161,7 @@ for i in ${repos[*]}; do
   #  echo name:$name
   #判断是否有pom.xml文件
   if [ ! -f $codeDir/$group/$name/pom.xml ]; then
-    echo "$codeDir/$group/$name/pom.xml不存在"
+    echo "[result:failed]$codeDir/$group/$name pom.xml不存在"
     continue
   fi
   grepRet=$(cd $codeDir/$group/$name && mvn dependency:tree | $grepCmd)
