@@ -19,8 +19,8 @@ DESCRIPTION
     - maven${needMavenVersion}
     - 配置好gitlab ssh密钥
   脚本同目录下配置好gitlab仓库地址列表配置文件checkMvnDependency.cfg,格式：
-  git@gitlab.xinyongfei.cn:infrastructure/techplayprod.git
-  git@gitlab.xinyongfei.cn:infrastructure/techplaycore.git
+  git@gitlab.com:demo/demo1.git
+  git@gitlab.com:demo/demo2.git
 EXAMPLES
   checkMvnDependency.sh -h
   checkMvnDependency.sh -g "grep Hikari" -d/tmp/code
