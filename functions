@@ -24,7 +24,7 @@ in_array() {
   shift
   local result=1
   for element in "${!array}"; do
-    if [[ $element == $needle ]]; then
+    if [[ "$element" == "$needle" ]]; then
       result=0
       break
     fi
@@ -40,7 +40,7 @@ in_array() {
 scandir() {
   local dir=$1
   local callback=$2
-  for i in $(ls $dir); do
+  for i in $dir/*; do
     if [ -d $dir/$i ]; then
       scandir $dir/$i $callback
     fi

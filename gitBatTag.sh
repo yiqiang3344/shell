@@ -14,7 +14,7 @@ else
 fi
 
 handle() {
-  for i in $(ls $1); do
+  for i in $1/*; do
     currentPath=$1/$i
     if [ -f $currentPath ]; then
       continue
@@ -23,10 +23,10 @@ handle() {
       handle $currentPath
       continue
     fi
-    if [[ ${#expectRepos[@]} > 0 ]] && ! in_array expectRepos $i; then
+    if [[ ${#expectRepos[@]} -gt 0 ]] && ! in_array expectRepos $i; then
       continue
     fi
-    cd $currentPath
+    cd $currentPath || exit 1
     echo "#"$currentPath
     git fetch
     if [ $? -ne 0 ]; then
@@ -49,34 +49,3 @@ handle() {
 }
 
 handle $dir
-
-OLD_IFS="$IFS"
-IFS=","
-array=($repos)
-IFS="$OLD_IFS"
-for str in ${array[@]}; do
-  echo '----------------------------'
-  echo $str
-  cd $dir/$str
-  if [ ! -d .git ]; then
-    echo "非git仓库"
-    continue
-  fi
-  git fetch
-  if [ $? -ne 0 ]; then
-    continue
-  fi
-  git checkout $branch
-  if [ $? -ne 0 ]; then
-    continue
-  fi
-  git pull origin $branch
-  if [ $? -ne 0 ]; then
-    continue
-  fi
-  git tag $tag
-  if [ $? -ne 0 ]; then
-    continue
-  fi
-  git push origin $tag
-done

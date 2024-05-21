@@ -15,15 +15,16 @@ else
 fi
 
 handle() {
-  for d in $(ls $1); do
-    _fromPath=$1/$d
+  for d in $1; do
+    _fromPath=$d
+    fileName=${i/$dir\//}
     if [ -f $_fromPath ]; then
-      if [[ ${#includeArr[@]} > 0 ]]; then
-        if in_array includeArr $d; then
+      if [[ ${#includeArr[@]} -gt 0 ]]; then
+        if in_array includeArr $fileName; then
           replace $from $to $_fromPath
         fi
-      elif [[ ${#ignoreArr[@]} > 0 ]]; then
-        if ! in_array ignoreArr $d; then
+      elif [[ ${#ignoreArr[@]} -gt 0 ]]; then
+        if ! in_array ignoreArr $fileName; then
           replace $from $to $_fromPath
         fi
       else

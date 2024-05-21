@@ -14,8 +14,9 @@ else
 fi
 
 handle() {
-  for i in $(ls $1); do
-    currentPath=$1/$i
+  for i in $1/*; do
+    currentPath=$i
+    repoName=${i/$dir\//}
     if [ -f $currentPath ]; then
       continue
     fi
@@ -23,10 +24,10 @@ handle() {
       handle $currentPath
       continue
     fi
-    if [[ ${#expectRepos[@]} > 0 ]] && ! in_array expectRepos $i; then
+    if [[ ${#expectRepos[@]} -gt 0 ]] && ! in_array expectRepos $repoName; then
       continue
     fi
-    cd $currentPath
+    cd $currentPath || exit 1
     echo "#"$currentPath
     git fetch
     if [ $? -ne 0 ]; then
