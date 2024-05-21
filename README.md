@@ -19,3 +19,4 @@
 - [go-tools-mac](go-tools-mac) go版本工具集mac系统版，源码详情见[go-tools](go-tools/README.MD)，配置文件为[config.yaml](config.yaml)
   - `./go-tools-mac setGitlabProjectsMember`  给指定用户名的gitlab用户批量设置指定仓库的报告者权限， 通过交互方式输入用户名和仓库名。
 - [go-tools-linux](go-tools-linux) go版本工具集linux系统版
+- [checkMvnDependency.sh](checkMvnDependency.sh) 拉取配置文件中指定的java项目代码仓库到指定目录，并检查maven依赖是否包含指定包

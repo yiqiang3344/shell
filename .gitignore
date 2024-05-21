@@ -1,5 +1,5 @@
 /.idea
 /wait
-autossh.cfg
-batGetGitlabRepos.cfg
+*.cfg
 config.xinfei.yaml
+/code
