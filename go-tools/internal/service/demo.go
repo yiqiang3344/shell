@@ -5,9 +5,15 @@
 
 package service
 
+import (
+	"context"
+
+	"github.com/gogf/gf/v2/os/gcmd"
+)
+
 type (
 	IDemo interface {
-		Demo()
+		Demo(ctx context.Context, parser *gcmd.Parser)
 	}
 )
 

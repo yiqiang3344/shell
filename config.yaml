@@ -1,3 +1,23 @@
+debug: false #是否开启debug模式，会打印更多信息
 gitlab:
   url: "https://gitlab.com"
   token: "token"
+  setProjectMember:
+    username: "" #用户名
+    projectNames: "" #查询的项目名称列表，多个则逗号分割，匹配仓库名、描述
+  clone:
+    codeDir: "/Users/xinfei/localcode/testcode" #clone时仓库存储目录
+    searchKey: "" #clone时搜索条件，匹配仓库名、描述
+    filter:
+      expectProjects: #期望的项目列表
+        - ""
+      expectGroups: #期望的完整组列表
+        - ""
+      expectTopGroups: #期望的顶级组列表
+        - ""
+      ignoreProjects: #忽略的项目列表
+        - ""
+      ignoreGroups: #忽略的完整组列表
+        - ""
+      ignoreTopGroups: #忽略的顶级组列表
+        - ""

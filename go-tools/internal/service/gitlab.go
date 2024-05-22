@@ -8,14 +8,16 @@ package service
 import (
 	"context"
 
+	"github.com/gogf/gf/v2/os/gcmd"
 	"github.com/xanzy/go-gitlab"
 )
 
 type (
 	IGitlab interface {
-		SetProjectsMember(ctx context.Context)
-		FindUserByUsername(ctx context.Context) (user *gitlab.User)
-		FindProjectsByNames(ctx context.Context) (projects []*gitlab.Project)
+		SetProjectsMember(ctx context.Context, parser *gcmd.Parser)
+		FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (user *gitlab.User)
+		FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects []*gitlab.Project)
+		Clone(ctx context.Context, parse *gcmd.Parser)
 	}
 )
 
