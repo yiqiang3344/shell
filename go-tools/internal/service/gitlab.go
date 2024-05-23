@@ -15,6 +15,7 @@ import (
 type (
 	IGitlab interface {
 		SetProjectsMember(ctx context.Context, parser *gcmd.Parser)
+		InputAccessLevel(ctx context.Context, parser *gcmd.Parser) (accessLevel string)
 		FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (user *gitlab.User)
 		FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects []*gitlab.Project)
 		Clone(ctx context.Context, parse *gcmd.Parser)

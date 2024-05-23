@@ -89,6 +89,13 @@ var (
 				IsArg:  false,
 				Orphan: false,
 			},
+			{
+				Name:   "accessLevel",
+				Short:  "a",
+				Brief:  "项目权限：访客, 报告者, 开发人员, 主程序员。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
 		}...),
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 			service.Gitlab().SetProjectsMember(ctx, parser)

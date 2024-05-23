@@ -32,7 +32,16 @@ func init() {
 }
 
 var (
-	AccessLevelReporter = gitlab.ReporterPermissions
+	AccessLevelMap = map[string]gitlab.AccessLevelValue{
+		"无":    gitlab.NoPermissions,
+		"最小访问": gitlab.MinimalAccessPermissions,
+		"访客":   gitlab.GuestPermissions,
+		"报告者":  gitlab.ReporterPermissions,
+		"开发人员": gitlab.DeveloperPermissions,
+		"主程序员": gitlab.MaintainerPermissions,
+		"所有者":  gitlab.OwnerPermissions,
+		"管理员":  gitlab.AdminPermissions,
+	}
 )
 
 func (s *sGitlab) initClient(ctx context.Context, parser *gcmd.Parser) (err error) {
@@ -70,18 +79,59 @@ func (s *sGitlab) SetProjectsMember(ctx context.Context, parser *gcmd.Parser) {
 
 	user = s.FindUserByUsername(ctx, parser)
 	projects = s.FindProjectsByNames(ctx, parser)
-
+	accessLevel := s.InputAccessLevel(ctx, parser)
+	_accessLevel := AccessLevelMap[s.InputAccessLevel(ctx, parser)]
 	for _, _project := range projects {
-		_, _, err := s.gitClient.ProjectMembers.AddProjectMember(_project.ID, &gitlab.AddProjectMemberOptions{
-			UserID:      user.ID,
-			AccessLevel: &AccessLevelReporter,
-		})
-		if err != nil {
-			utility.Errorf("仓库[%+v]添加用户[%+v]权限失败:%+v\n", _project.PathWithNamespace, user.Username, err.Error())
+		var (
+			projectMember *gitlab.ProjectMember
+		)
+		//先检查人员是否存在，不存在则新增，存在则修改权限
+		projectMember, _, err = s.gitClient.ProjectMembers.GetProjectMember(_project.ID, user.ID)
+		if projectMember != nil {
+			_, _, err = s.gitClient.ProjectMembers.EditProjectMember(_project.ID, user.ID, &gitlab.EditProjectMemberOptions{
+				AccessLevel: &_accessLevel,
+			})
+			if err != nil {
+				utility.Errorf("仓库[%+v]编辑用户[%+v]权限[%s]失败:%+v\n", _project.PathWithNamespace, user.Username, accessLevel, err.Error())
+				continue
+			}
+			utility.Debugf(ctx, parser, "仓库[%+v]编辑用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+		} else {
+			_, _, err = s.gitClient.ProjectMembers.AddProjectMember(_project.ID, &gitlab.AddProjectMemberOptions{
+				UserID:      user.ID,
+				AccessLevel: &_accessLevel,
+			})
+			if err != nil {
+				utility.Errorf("仓库[%+v]添加用户[%+v]权限[%s]失败:%+v\n", _project.PathWithNamespace, user.Username, accessLevel, err.Error())
+				continue
+			}
+			utility.Debugf(ctx, parser, "仓库[%+v]添加用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+		}
+
+		fmt.Printf("仓库[%+v]设置用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+	}
+}
+
+func (s *sGitlab) InputAccessLevel(ctx context.Context, parser *gcmd.Parser) (accessLevel string) {
+	accessLevel = utility.GetArgString(ctx, parser, "gitlab.setProjectMember.accessLevel", "accessLevel")
+	for {
+		if accessLevel == "" {
+			accessLevel = utility.Scanf("输入权限类型:")
+		}
+		if strings.Trim(accessLevel, "") == "" {
+			utility.Warnln("权限类型不能为空")
+			accessLevel = ""
 			continue
 		}
-		fmt.Printf("仓库[%+v]添加用户[%+v]权限成功\n", _project.PathWithNamespace, user.Username)
+
+		if _, ok := AccessLevelMap[accessLevel]; !ok {
+			utility.Warnf("权限类型不合法:%s\n", accessLevel)
+			accessLevel = ""
+			continue
+		}
+		break
 	}
+	return
 }
 
 func (s *sGitlab) FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (user *gitlab.User) {

@@ -5,6 +5,7 @@ gitlab:
   setProjectMember:
     username: "" #用户名
     projectNames: "" #查询的项目名称列表，多个则逗号分割，匹配仓库名、描述
+    accessLevel: "报告者" #访问权限，默认报告者
   clone:
     codeDir: "/Users/xinfei/localcode/testcode" #clone时仓库存储目录
     searchKey: "" #clone时搜索条件，匹配仓库名、描述
