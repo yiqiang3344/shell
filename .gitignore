@@ -1,5 +1,5 @@
 /.idea
 /wait
 *.cfg
-config.xinfei.yaml
+config.*.yaml
 /code
