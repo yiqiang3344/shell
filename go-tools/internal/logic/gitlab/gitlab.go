@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/container/gmap"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcmd"
@@ -67,7 +68,7 @@ func (s *sGitlab) initClient(ctx context.Context, parser *gcmd.Parser) (err erro
 func (s *sGitlab) SetProjectsMember(ctx context.Context, parser *gcmd.Parser) {
 	var (
 		user     *gitlab.User
-		projects []*gitlab.Project
+		projects *gmap.ListMap
 		err      error
 	)
 
@@ -80,35 +81,36 @@ func (s *sGitlab) SetProjectsMember(ctx context.Context, parser *gcmd.Parser) {
 	user = s.FindUserByUsername(ctx, parser)
 	projects = s.FindProjectsByNames(ctx, parser)
 	accessLevel := s.InputAccessLevel(ctx, parser)
-	_accessLevel := AccessLevelMap[s.InputAccessLevel(ctx, parser)]
-	for _, _project := range projects {
+	accessLevelTmp := AccessLevelMap[s.InputAccessLevel(ctx, parser)]
+	for _, v := range projects.Values() {
+		project := v.(*gitlab.Project)
 		var (
 			projectMember *gitlab.ProjectMember
 		)
 		//先检查人员是否存在，不存在则新增，存在则修改权限
-		projectMember, _, err = s.gitClient.ProjectMembers.GetProjectMember(_project.ID, user.ID)
+		projectMember, _, err = s.gitClient.ProjectMembers.GetProjectMember(project.ID, user.ID)
 		if projectMember != nil {
-			_, _, err = s.gitClient.ProjectMembers.EditProjectMember(_project.ID, user.ID, &gitlab.EditProjectMemberOptions{
-				AccessLevel: &_accessLevel,
+			_, _, err = s.gitClient.ProjectMembers.EditProjectMember(project.ID, user.ID, &gitlab.EditProjectMemberOptions{
+				AccessLevel: &accessLevelTmp,
 			})
 			if err != nil {
-				utility.Errorf("仓库[%+v]编辑用户[%+v]权限[%s]失败:%+v\n", _project.PathWithNamespace, user.Username, accessLevel, err.Error())
+				utility.Errorf("仓库[%+v]编辑用户[%+v]权限[%s]失败:%+v\n", project.PathWithNamespace, user.Username, accessLevel, err.Error())
 				continue
 			}
-			utility.Debugf(ctx, parser, "仓库[%+v]编辑用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+			utility.Debugf(ctx, parser, "仓库[%+v]编辑用户[%+v]权限[%s]成功\n", project.PathWithNamespace, user.Username, accessLevel)
 		} else {
-			_, _, err = s.gitClient.ProjectMembers.AddProjectMember(_project.ID, &gitlab.AddProjectMemberOptions{
+			_, _, err = s.gitClient.ProjectMembers.AddProjectMember(project.ID, &gitlab.AddProjectMemberOptions{
 				UserID:      user.ID,
-				AccessLevel: &_accessLevel,
+				AccessLevel: &accessLevelTmp,
 			})
 			if err != nil {
-				utility.Errorf("仓库[%+v]添加用户[%+v]权限[%s]失败:%+v\n", _project.PathWithNamespace, user.Username, accessLevel, err.Error())
+				utility.Errorf("仓库[%+v]添加用户[%+v]权限[%s]失败:%+v\n", project.PathWithNamespace, user.Username, accessLevel, err.Error())
 				continue
 			}
-			utility.Debugf(ctx, parser, "仓库[%+v]添加用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+			utility.Debugf(ctx, parser, "仓库[%+v]添加用户[%+v]权限[%s]成功\n", project.PathWithNamespace, user.Username, accessLevel)
 		}
 
-		fmt.Printf("仓库[%+v]设置用户[%+v]权限[%s]成功\n", _project.PathWithNamespace, user.Username, accessLevel)
+		fmt.Printf("仓库[%+v]设置用户[%+v]权限[%s]成功\n", project.PathWithNamespace, user.Username, accessLevel)
 	}
 }
 
@@ -191,10 +193,9 @@ func (s *sGitlab) FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (
 	return
 }
 
-func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects []*gitlab.Project) {
+func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects *gmap.ListMap) {
 	var (
-		tmpProjects    []*gitlab.Project
-		inputMatch     bool
+		tmpProjects    *gmap.ListMap
 		err            error
 		projectIds     []string
 		simpleRepoInfo = true
@@ -212,7 +213,7 @@ func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 		}
 		projectNameList := strings.Split(projectNames, ",")
 		flag := true
-		tmpProjects = []*gitlab.Project{}
+		tmpProjects = gmap.NewListMap()
 		for _, v := range projectNameList {
 			if strings.Trim(v, "") == "" {
 				utility.Warnln("仓库名不能为空")
@@ -220,8 +221,8 @@ func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 				flag = false
 				break
 			}
-			var _projects []*gitlab.Project
-			_projects, _, err = s.gitClient.Projects.ListProjects(&gitlab.ListProjectsOptions{
+			var projectsTmp []*gitlab.Project
+			projectsTmp, _, err = s.gitClient.Projects.ListProjects(&gitlab.ListProjectsOptions{
 				Simple: &simpleRepoInfo,
 				Search: &v,
 			})
@@ -231,18 +232,20 @@ func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 				flag = false
 				break
 			}
-			if len(_projects) == 0 {
+			if len(projectsTmp) == 0 {
 				utility.Warnf("无对应仓库:%+v\n", v)
 				projectNames = ""
 				flag = false
 				break
 			}
-			tmpProjects = append(tmpProjects, _projects...)
+			for _, v := range projectsTmp {
+				tmpProjects.Set(v.ID, v)
+			}
 		}
 		if !flag {
 			continue
 		}
-		if len(tmpProjects) == 0 {
+		if tmpProjects.Size() == 0 {
 			utility.Warnln("未查询到任何仓库")
 			projectNames = ""
 			continue
@@ -250,30 +253,31 @@ func (s *sGitlab) FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 		break
 	}
 
-	fmt.Printf("序号 | id | name | Path | description\n")
-	for i, v := range tmpProjects {
-		fmt.Printf("%+v | %+v | %+v | %+v | %+v \n", i, v.ID, v.Name, v.PathWithNamespace, v.Description)
+	fmt.Printf("id | name | Path | description\n")
+	for _, v := range tmpProjects.Values() {
+		vTmp := v.(*gitlab.Project)
+		fmt.Printf("%+v | %+v | %+v | %+v \n", vTmp.ID, vTmp.Name, vTmp.PathWithNamespace, vTmp.Description)
 	}
 
 	for {
-		_projectIds := utility.Scanf("选择仓库序号,多个则以逗号分割:")
-		if strings.Trim(_projectIds, "") == "" {
-			utility.Warnln("仓库序号列表不能为空")
+		projectIdsTmp := utility.Scanf("选择仓库ID,多个则以逗号分割:")
+		if strings.Trim(projectIdsTmp, "") == "" {
+			utility.Warnln("仓库ID列表不能为空")
 			continue
 		}
-		projectIds = strings.Split(_projectIds, ",")
-		//检查选择的序号是否存在
+		projectIds = strings.Split(projectIdsTmp, ",")
+		//检查选择的ID是否存在
 		flag := true
-		projects = []*gitlab.Project{}
+		projects = gmap.NewListMap()
 		for _, v := range projectIds {
-			//检查选中的用户序号是否存在
-			inputMatch, err = regexp.MatchString("[0-"+gconv.String(len(tmpProjects)-1)+"]", v)
-			if !inputMatch {
-				utility.Warnf("选择的仓库序号[%+v]不在可选范围内\n", v)
+			id := gconv.Int(v)
+			//检查选中ID是否存在
+			if !tmpProjects.Contains(id) {
+				utility.Warnf("选择的仓库序号[%+v]不在可选范围内\n", id)
 				flag = false
 				continue
 			}
-			projects = append(projects, tmpProjects[gconv.Int(v)])
+			projects.Set(id, tmpProjects.Get(id))
 		}
 		if !flag {
 			continue
@@ -333,9 +337,9 @@ func (s *sGitlab) Clone(ctx context.Context, parse *gcmd.Parser) {
 		perPage = 100
 		for {
 			var (
-				_projects []*gitlab.Project
+				projectsTmp []*gitlab.Project
 			)
-			_projects, _, err = s.gitClient.Projects.ListProjects(&gitlab.ListProjectsOptions{
+			projectsTmp, _, err = s.gitClient.Projects.ListProjects(&gitlab.ListProjectsOptions{
 				Search: &searchKey,
 				Simple: &simpleRepoInfo,
 				ListOptions: gitlab.ListOptions{
@@ -347,10 +351,10 @@ func (s *sGitlab) Clone(ctx context.Context, parse *gcmd.Parser) {
 				utility.Errorf("查询仓库列表报错:%+v\n", err)
 				return
 			}
-			if len(_projects) == 0 {
+			if len(projectsTmp) == 0 {
 				break
 			}
-			projects = append(projects, _projects...)
+			projects = append(projects, projectsTmp...)
 			page++
 		}
 
@@ -359,40 +363,40 @@ func (s *sGitlab) Clone(ctx context.Context, parse *gcmd.Parser) {
 		cfgMap = utility.MapFromList(g.Cfg().MustGet(ctx, "gitlab.clone.filter.expectProjects").Slice())
 		if len(cfgMap) > 0 {
 			utility.Debugln(ctx, parse, "3.1.检查只需要的仓库配置")
-			var _projects []*gitlab.Project
+			var projectsTmp []*gitlab.Project
 			for _, p := range projects {
 				if _, ok := cfgMap[p.Name]; ok {
 					utility.Debugf(ctx, parse, "命中:%+v\n", p.PathWithNamespace)
-					_projects = append(_projects, p)
+					projectsTmp = append(projectsTmp, p)
 				}
 			}
-			projects = _projects
+			projects = projectsTmp
 		}
 		//3.2.检查只需要的仓库组配置
 		cfgMap = utility.MapFromList(g.Cfg().MustGet(ctx, "gitlab.clone.filter.expectGroups").Slice())
 		if len(cfgMap) > 0 {
 			utility.Debugln(ctx, parse, "3.2.检查只需要的仓库组配置")
-			var _projects []*gitlab.Project
+			var projectsTmp []*gitlab.Project
 			for _, p := range projects {
 				if _, ok := cfgMap[p.Namespace.FullPath]; ok {
 					utility.Debugf(ctx, parse, "命中:%+v\n", p.PathWithNamespace)
-					_projects = append(_projects, p)
+					projectsTmp = append(projectsTmp, p)
 				}
 			}
-			projects = _projects
+			projects = projectsTmp
 		}
 		//3.3.检查只需要的顶级仓库组配置
 		cfgMap = utility.MapFromList(g.Cfg().MustGet(ctx, "gitlab.clone.filter.expectTopGroups").Slice())
 		if len(cfgMap) > 0 {
 			utility.Debugln(ctx, parse, "3.3.检查只需要的顶级仓库组配置")
-			var _projects []*gitlab.Project
+			var projectsTmp []*gitlab.Project
 			for _, p := range projects {
 				if _, ok := cfgMap[strings.Split(p.Namespace.FullPath, "/")[0]]; ok {
 					utility.Debugf(ctx, parse, "命中:%+v\n", p.PathWithNamespace)
-					_projects = append(_projects, p)
+					projectsTmp = append(projectsTmp, p)
 				}
 			}
-			projects = _projects
+			projects = projectsTmp
 		}
 		//3.4.检查要过滤的仓库配置
 		cfgMap = utility.MapFromList(g.Cfg().MustGet(ctx, "gitlab.clone.filter.ignoreProjects").Slice())
