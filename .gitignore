@@ -3,3 +3,4 @@
 *.cfg
 config.*.yaml
 /code
+lib

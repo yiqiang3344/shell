@@ -20,6 +20,7 @@ type (
 		FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (user *gitlab.User)
 		FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects *gmap.ListMap)
 		Clone(ctx context.Context, parse *gcmd.Parser)
+		StatsUserCodeLines(ctx context.Context, parse *gcmd.Parser)
 	}
 )
 

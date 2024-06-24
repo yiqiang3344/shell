@@ -18,6 +18,7 @@ import (
 	"regexp"
 	"strings"
 	"sync"
+	"time"
 )
 
 type sGitlab struct {
@@ -522,4 +523,263 @@ func (s *sGitlab) Clone(ctx context.Context, parse *gcmd.Parser) {
 	wg.Wait()
 	utility.Debugln(ctx, parse, "完成")
 	fmt.Printf("代码存储目录:\n%s\n", codePath)
+}
+
+type userInfo struct {
+	ID        int        `json:"id"`
+	Username  string     `json:"username"`
+	Email     string     `json:"email"`
+	Name      string     `json:"name"`
+	CreatedAt *time.Time `json:"created_at"`
+}
+
+type projectInfo struct {
+	ID                int        `json:"id"`
+	Description       string     `json:"description"`
+	Name              string     `json:"name"`
+	Path              string     `json:"path"`
+	PathWithNamespace string     `json:"path_with_namespace"`
+	CreatedAt         *time.Time `json:"created_at,omitempty"`
+}
+
+type UserCommitStats struct {
+	UserInfo           userInfo
+	Projects           map[int]projectInfo
+	TotalCommitStats   *gitlab.CommitStats
+	ProjectCommitStats map[int]*gitlab.CommitStats
+	ProjectCommit      map[int][]*gitlab.Commit
+}
+
+func (s *sGitlab) StatsUserCodeLines(ctx context.Context, parse *gcmd.Parser) {
+	var (
+		err       error
+		userInput []string
+		userMap   = make(map[string]*UserCommitStats)
+		startTime time.Time
+		endTime   time.Time
+	)
+	//要统计的用户列表
+	userInput = []string{
+		"fengshutong",
+	}
+
+	//获取起止时间
+	startTime = gtime.NewFromStr("2024-06-14").Time
+	endTime = gtime.NewFromStr("2024-06-24").Time
+
+	err = s.initClient(ctx, parse)
+	if err != nil {
+		utility.Errorf("客户端初始化失败:%+v\n", err.Error())
+		return
+	}
+
+	//获取用户信息
+	allUserMap := s.getAllUserMap(ctx, parse, &gitlab.ListUsersOptions{})
+
+	//遍历用户，获取用户项目
+	for _, v := range userInput {
+		if _, ok := allUserMap[v]; !ok {
+			utility.Debugf(ctx, parse, "用户[%s]不存在\n", v)
+			continue
+		}
+		uInfo := userInfo{}
+		gconv.ConvertWithRefer(allUserMap[v], &uInfo)
+		userMap[v] = &UserCommitStats{
+			UserInfo:           uInfo,
+			Projects:           make(map[int]projectInfo),
+			ProjectCommitStats: make(map[int]*gitlab.CommitStats),
+			TotalCommitStats:   &gitlab.CommitStats{},
+			ProjectCommit:      make(map[int][]*gitlab.Commit),
+		}
+	}
+
+	// 遍历所有项目，查询用户加入的项目列表
+	allProjectMap := s.getAllProjectMap(ctx, parse, &gitlab.ListProjectsOptions{
+		LastActivityAfter:  &startTime,
+		LastActivityBefore: &endTime,
+	})
+	for _, v := range allProjectMap {
+		projectUserMap := s.getProjectUserMap(ctx, parse, v.ID)
+		for _, v1 := range userMap {
+			if _, ok := projectUserMap[v1.UserInfo.Username]; ok {
+				pInfo := projectInfo{}
+				gconv.ConvertWithRefer(v, &pInfo)
+				v1.Projects[v.ID] = pInfo
+			}
+		}
+	}
+
+	withStats := true
+	for _, v := range userMap {
+		//遍历项目，获取提交
+		for _, v1 := range v.Projects {
+			commits := s.getProjectCommits(ctx, parse, v1.ID, &gitlab.ListCommitsOptions{
+				Author:    &v.UserInfo.Username,
+				Since:     &startTime,
+				Until:     &endTime,
+				WithStats: &withStats,
+			})
+			//遍历提交，获取代码行数
+			for _, v2 := range commits {
+				// 再次过滤，上面的查询过滤条件可能没生效
+				if v2.CommitterEmail != v.UserInfo.Email {
+					continue
+				}
+				g.Dump("命中", v2)
+				//记录项目提交明细
+				if c, ok := v.ProjectCommit[v1.ID]; ok {
+					c = append(c, v2)
+					v.ProjectCommit[v1.ID] = c
+				} else {
+					v.ProjectCommit[v1.ID] = []*gitlab.Commit{v2}
+				}
+				//统计用户每项目的代码行数
+				if c, ok := v.ProjectCommitStats[v1.ID]; ok {
+					c.Total += v2.Stats.Total
+					c.Deletions += v2.Stats.Deletions
+					c.Additions += v2.Stats.Additions
+				} else {
+					v.ProjectCommitStats[v1.ID] = v2.Stats
+				}
+				//统计用户总代码行数
+				v.TotalCommitStats.Total += v2.Stats.Total
+				v.TotalCommitStats.Deletions += v2.Stats.Deletions
+				v.TotalCommitStats.Additions += v2.Stats.Additions
+			}
+		}
+	}
+	g.Dump(userMap)
+
+	//输出excel
+
+	return
+}
+
+func (s *sGitlab) getAllProjectMap(ctx context.Context, parse *gcmd.Parser, options *gitlab.ListProjectsOptions) (projectMap map[int]*gitlab.Project) {
+	projectMap = make(map[int]*gitlab.Project)
+	page := 1
+	perPage := 100
+	searchSimple := true
+	utility.Debugf(ctx, parse, "开始查询所有仓库项目信息\n")
+	for {
+		options.ListOptions.Page = page
+		options.ListOptions.PerPage = perPage
+		options.Simple = &searchSimple
+		ret, res, err := s.gitClient.Projects.ListProjects(options)
+		if err != nil {
+			utility.Errorf("查询项目信息失败:%+v\n", err.Error())
+			return
+		}
+		for _, v := range ret {
+			projectMap[v.ID] = v
+		}
+		utility.Debugf(ctx, parse, "查询进度:%d/%d\n", page, res.TotalPages)
+		if page >= res.TotalPages {
+			break
+		}
+		page++
+	}
+	return
+}
+
+func (s *sGitlab) getAllUserMap(ctx context.Context, parse *gcmd.Parser, options *gitlab.ListUsersOptions) (userMap map[string]*gitlab.User) {
+	userMap = make(map[string]*gitlab.User)
+	page := 1
+	perPage := 100
+	searchActive := true
+	utility.Debugf(ctx, parse, "开始查询所有用户信息\n")
+	for {
+		options.ListOptions.Page = page
+		options.ListOptions.PerPage = perPage
+		options.Active = &searchActive
+		ret, res, err := s.gitClient.Users.ListUsers(options)
+		if err != nil {
+			utility.Errorf("查询用户信息失败:%+v\n", err.Error())
+			return
+		}
+		for _, v := range ret {
+			userMap[v.Username] = v
+		}
+		utility.Debugf(ctx, parse, "查询进度:%d/%d\n", page, res.TotalPages)
+		if page >= res.TotalPages {
+			break
+		}
+		page++
+	}
+	return
+}
+
+func (s *sGitlab) getProjectUserMap(ctx context.Context, parse *gcmd.Parser, pid int) (userMap map[string]*gitlab.ProjectUser) {
+	userMap = make(map[string]*gitlab.ProjectUser)
+	page := 1
+	perPage := 100
+	utility.Debugf(ctx, parse, "开始查询项目[%d]的用户信息\n", pid)
+	for {
+		ret, res, err := s.gitClient.Projects.ListProjectsUsers(pid, &gitlab.ListProjectUserOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    page,
+				PerPage: perPage,
+			},
+		})
+		if err != nil {
+			utility.Errorf("查询项目用户信息失败:%+v\n", err.Error())
+			return
+		}
+		for _, v := range ret {
+			userMap[v.Username] = v
+		}
+		utility.Debugf(ctx, parse, "查询进度:%d/%d\n", page, res.TotalPages)
+		if page >= res.TotalPages {
+			break
+		}
+		page++
+	}
+	return
+}
+
+func (s *sGitlab) getProjectBranch(ctx context.Context, parse *gcmd.Parser, pid int) (branches []*gitlab.Branch) {
+	page := 1
+	perPage := 100
+	utility.Debugf(ctx, parse, "开始查询项目[%d]的分支信息\n", pid)
+	for {
+		ret, res, err := s.gitClient.Branches.ListBranches(pid, &gitlab.ListBranchesOptions{
+			ListOptions: gitlab.ListOptions{
+				Page:    page,
+				PerPage: perPage,
+			},
+		})
+		if err != nil {
+			utility.Errorf("查询项目[%d]分支信息失败:%+v\n", pid, err.Error())
+			return
+		}
+		branches = append(branches, ret...)
+		utility.Debugf(ctx, parse, "查询进度:%d/%d\n", page, res.TotalPages)
+		if page >= res.TotalPages {
+			break
+		}
+		page++
+	}
+	return
+}
+
+func (s *sGitlab) getProjectCommits(ctx context.Context, parse *gcmd.Parser, pid int, options *gitlab.ListCommitsOptions) (commits []*gitlab.Commit) {
+	page := 1
+	perPage := 100
+	utility.Debugf(ctx, parse, "开始查询项目[%d]的提交信息\n", pid)
+	for {
+		options.ListOptions.Page = page
+		options.ListOptions.PerPage = perPage
+		ret, res, err := s.gitClient.Commits.ListCommits(pid, options)
+		if err != nil {
+			utility.Errorf("查询项目[%d]提交信息失败:%+v\n", pid, err.Error())
+			return
+		}
+		commits = append(commits, ret...)
+		utility.Debugf(ctx, parse, "查询进度:%d/%d\n", page, res.TotalPages)
+		if page >= res.TotalPages {
+			break
+		}
+		page++
+	}
+	return
 }
