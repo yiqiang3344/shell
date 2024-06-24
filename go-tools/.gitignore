@@ -16,3 +16,4 @@ nohup.out
 /bin/linux_amd64
 **/config.local.yaml
 **/config.xinfei.yaml
+*.xlsx
