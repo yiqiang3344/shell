@@ -12,6 +12,7 @@ import (
 	"github.com/gogf/gf/v2/util/gconv"
 	"github.com/schollz/progressbar/v3"
 	"github.com/xanzy/go-gitlab"
+	"github.com/xuri/excelize/v2"
 	"go-tools/internal/service"
 	"go-tools/internal/utility"
 	"os/exec"
@@ -594,9 +595,11 @@ func (s *sGitlab) StatsUserCodeLines(ctx context.Context, parse *gcmd.Parser) {
 	}
 
 	// 遍历所有项目，查询用户加入的项目列表
+	//search := "lendtrade"
 	allProjectMap := s.getAllProjectMap(ctx, parse, &gitlab.ListProjectsOptions{
 		LastActivityAfter:  &startTime,
 		LastActivityBefore: &endTime,
+		//Search:             &search,
 	})
 	for _, v := range allProjectMap {
 		projectUserMap := s.getProjectUserMap(ctx, parse, v.ID)
@@ -648,10 +651,65 @@ func (s *sGitlab) StatsUserCodeLines(ctx context.Context, parse *gcmd.Parser) {
 			}
 		}
 	}
-	g.Dump(userMap)
 
 	//输出excel
-
+	f := excelize.NewFile()
+	defer func() {
+		if err := f.Close(); err != nil {
+			utility.Errorf("excel关闭异常:%v", err)
+		}
+	}()
+	// 创建一个工作表
+	excelFilepath := "./用户提交统计.xlsx"
+	sheet1Name := "用户维度"
+	sheet1Head := []string{"姓名", "增加数", "删除数", "总数"}
+	sheet2Name := "用户项目维度"
+	sheet2Head := []string{"姓名", "项目", "增加数", "删除数", "总数"}
+	sheet1Index, err := f.NewSheet(sheet1Name)
+	if err != nil {
+		utility.Errorf("excel创建异常:%v", err)
+		return
+	}
+	_, err = f.NewSheet(sheet2Name)
+	if err != nil {
+		utility.Errorf("excel创建异常:%v", err)
+		return
+	}
+	// 设置sheet1的头部
+	for k, v := range sheet1Head {
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(k+1)+gconv.String(1), v)
+	}
+	// 设置sheet1的值
+	for _, v := range userMap {
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(1)+gconv.String(2), v.UserInfo.Name)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(2)+gconv.String(2), v.TotalCommitStats.Additions)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(3)+gconv.String(2), v.TotalCommitStats.Deletions)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(4)+gconv.String(2), v.TotalCommitStats.Total)
+	}
+	// 设置sheet2的头部
+	for k, v := range sheet2Head {
+		f.SetCellValue(sheet2Name, utility.ConvertNumToChar(k+1)+gconv.String(1), v)
+	}
+	// 设置sheet2的值
+	for _, v := range userMap {
+		n := 2
+		for k1, v1 := range v.ProjectCommitStats {
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(1)+gconv.String(n), v.UserInfo.Name)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(2)+gconv.String(n), v.Projects[k1].PathWithNamespace)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(3)+gconv.String(n), v1.Additions)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(4)+gconv.String(n), v1.Deletions)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(5)+gconv.String(n), v1.Total)
+			n++
+		}
+	}
+	// 设置工作簿的默认工作表
+	f.SetActiveSheet(sheet1Index)
+	f.DeleteSheet("Sheet1")
+	// 根据指定路径保存文件
+	if err := f.SaveAs(excelFilepath); err != nil {
+		utility.Errorf("excel保存异常:%v", err)
+	}
+	fmt.Printf("excel文件生成完毕，地址:%s\n", excelFilepath)
 	return
 }
 

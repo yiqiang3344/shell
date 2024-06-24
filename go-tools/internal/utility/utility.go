@@ -68,3 +68,19 @@ func Warnln(format string) (n int, err error) {
 func Warnf(format string, args ...any) (n int, err error) {
 	return fmt.Printf("%c[1;0;33m%s%c[0m", 0x1B, fmt.Sprintf("[warning]"+format, args...), 0x1B)
 }
+
+var ExcelChar = []string{"", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"}
+
+func ConvertNumToChar(num int) string {
+	if num < 27 {
+		return ExcelChar[num]
+	}
+	k := num % 26
+	if k == 0 {
+		k = 26
+	}
+	v := (num - k) / 26
+	col := ConvertNumToChar(v)
+	cols := col + ExcelChar[k]
+	return cols
+}
