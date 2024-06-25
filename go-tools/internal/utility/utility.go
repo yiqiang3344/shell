@@ -32,7 +32,8 @@ func GetArgString(ctx context.Context, parser *gcmd.Parser, cfgPattern string, p
 	if ret != "" {
 		return ret
 	}
-	return g.Cfg().MustGet(ctx, cfgPattern).String()
+	ret = g.Cfg().MustGet(ctx, cfgPattern).String()
+	return ret
 }
 
 func IsDebug(ctx context.Context, parser *gcmd.Parser) bool {

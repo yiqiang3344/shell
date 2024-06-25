@@ -3,6 +3,7 @@ package gitlab
 import (
 	"context"
 	"fmt"
+	"github.com/gogf/gf/v2/container/garray"
 	"github.com/gogf/gf/v2/container/gmap"
 	"github.com/gogf/gf/v2/errors/gerror"
 	"github.com/gogf/gf/v2/frame/g"
@@ -546,10 +547,10 @@ type projectInfo struct {
 
 type UserCommitStats struct {
 	UserInfo           userInfo
-	Projects           map[int]projectInfo
+	Projects           *gmap.IntAnyMap
 	TotalCommitStats   *gitlab.CommitStats
-	ProjectCommitStats map[int]*gitlab.CommitStats
-	ProjectCommit      map[int][]*gitlab.Commit
+	ProjectCommitStats *gmap.IntAnyMap
+	ProjectCommit      *gmap.IntAnyMap
 }
 
 // GetUserCommitStats 获取用户提交统计信息
@@ -557,7 +558,7 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 	var (
 		err       error
 		userInput []string
-		userMap   = make(map[string]*UserCommitStats)
+		userMap   = gmap.NewStrAnyMap(true)
 		startTime *gtime.Time
 		endTime   *gtime.Time
 		sTime     = gtime.Now()
@@ -613,17 +614,17 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 		}
 		uInfo := userInfo{}
 		gconv.ConvertWithRefer(allUserMap[v], &uInfo)
-		userMap[v] = &UserCommitStats{
+		userMap.Set(v, &UserCommitStats{
 			UserInfo:           uInfo,
-			Projects:           make(map[int]projectInfo),
-			ProjectCommitStats: make(map[int]*gitlab.CommitStats),
+			Projects:           gmap.NewIntAnyMap(true),
+			ProjectCommitStats: gmap.NewIntAnyMap(true),
 			TotalCommitStats:   &gitlab.CommitStats{},
-			ProjectCommit:      make(map[int][]*gitlab.Commit),
-		}
+			ProjectCommit:      gmap.NewIntAnyMap(true),
+		})
 	}
 
 	// 遍历所有项目，查询用户加入的项目列表
-	//search := "lendtrade"
+	//search := "hutta-web"
 	allProjectMap := s.getAllProjectMap(ctx, parse, &gitlab.ListProjectsOptions{
 		LastActivityAfter:  &startTime.Time,
 		LastActivityBefore: &endTime.Time,
@@ -634,7 +635,6 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 	// 并发遍历项目，获取用户和项目的关联关系
 	wg := sync.WaitGroup{}
 	wg.Add(len(allProjectMap))
-
 	for k, v := range allProjectMap {
 		go func(pid int, project *gitlab.Project) {
 			defer func() {
@@ -645,11 +645,11 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 			time.Sleep(time.Duration(waitT) * time.Second)
 
 			projectUserMap := s.getProjectUserMap(ctx, parse, project.ID)
-			for _, u := range userMap {
-				if _, ok := projectUserMap[u.UserInfo.Username]; ok {
+			for _, u := range userMap.Map() {
+				if _, ok := projectUserMap[u.(*UserCommitStats).UserInfo.Username]; ok {
 					pInfo := projectInfo{}
 					gconv.ConvertWithRefer(project, &pInfo)
-					u.Projects[project.ID] = pInfo
+					u.(*UserCommitStats).Projects.Set(project.ID, pInfo)
 				}
 			}
 		}(k, v)
@@ -657,11 +657,11 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 	wg.Wait()
 
 	withStats := true
-	for _, uc := range userMap {
+	for _, uc := range userMap.Map() {
 		//并发遍历项目，获取提交信息
 		wg := sync.WaitGroup{}
-		wg.Add(len(uc.Projects))
-		for _, p := range uc.Projects {
+		wg.Add(uc.(*UserCommitStats).Projects.Size())
+		for _, p := range uc.(*UserCommitStats).Projects.Map() {
 			go func(uc1 *UserCommitStats, project projectInfo) {
 				defer func() {
 					wg.Done()
@@ -679,26 +679,35 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 						continue
 					}
 					//记录项目提交明细
-					if c, ok := uc1.ProjectCommit[project.ID]; ok {
-						c = append(c, cmt)
-						uc1.ProjectCommit[project.ID] = c
-					} else {
-						uc1.ProjectCommit[project.ID] = []*gitlab.Commit{cmt}
-					}
+					uc1.ProjectCommit.LockFunc(func(m map[int]interface{}) {
+						if c, ok := m[project.ID]; ok {
+							c = append(c.([]*gitlab.Commit), cmt)
+							m[project.ID] = c
+						} else {
+							m[project.ID] = []*gitlab.Commit{cmt}
+						}
+					})
 					//统计用户每项目的代码行数
-					if c, ok := uc1.ProjectCommitStats[project.ID]; ok {
-						c.Total += cmt.Stats.Total
-						c.Deletions += cmt.Stats.Deletions
-						c.Additions += cmt.Stats.Additions
-					} else {
-						uc1.ProjectCommitStats[project.ID] = cmt.Stats
-					}
+					uc1.ProjectCommitStats.LockFunc(func(m map[int]interface{}) {
+						if c, ok := m[project.ID]; ok {
+							c.(*gitlab.CommitStats).Total += cmt.Stats.Total
+							c.(*gitlab.CommitStats).Deletions += cmt.Stats.Deletions
+							c.(*gitlab.CommitStats).Additions += cmt.Stats.Additions
+						} else {
+							m[project.ID] = &gitlab.CommitStats{
+								Total:     cmt.Stats.Total,
+								Deletions: cmt.Stats.Deletions,
+								Additions: cmt.Stats.Additions,
+							}
+						}
+					})
+
 					//统计用户总代码行数
 					uc1.TotalCommitStats.Total += cmt.Stats.Total
 					uc1.TotalCommitStats.Deletions += cmt.Stats.Deletions
 					uc1.TotalCommitStats.Additions += cmt.Stats.Additions
 				}
-			}(uc, p)
+			}(uc.(*UserCommitStats), p.(projectInfo))
 		}
 		wg.Wait()
 	}
@@ -716,42 +725,66 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 	sheet1Head := []string{"姓名", "增加数", "删除数", "总数"}
 	sheet2Name := "用户项目维度"
 	sheet2Head := []string{"姓名", "项目", "增加数", "删除数", "总数"}
+	sheet3Name := "用户项目提交明细"
+	sheet3Head := []string{"姓名", "项目", "提交时间", "提交标识", "提交备注", "增加数", "删除数", "总数"}
 	sheet1Index, err := f.NewSheet(sheet1Name)
 	if err != nil {
-		utility.Errorf("excel创建异常:%v", err)
+		utility.Errorf("sheet[%s]创建异常:%v", sheet1Name, err)
 		return
 	}
 	_, err = f.NewSheet(sheet2Name)
 	if err != nil {
-		utility.Errorf("excel创建异常:%v", err)
+		utility.Errorf("sheet[%s]创建异常:%v", sheet2Name, err)
 		return
 	}
-	// 设置sheet1的头部
+	_, err = f.NewSheet(sheet3Name)
+	if err != nil {
+		utility.Errorf("sheet[%s]创建异常:%v", sheet3Name, err)
+		return
+	}
+	// 设置头部
 	for k, v := range sheet1Head {
 		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(k+1)+gconv.String(1), v)
 	}
-	// 设置sheet1的值
-	for _, v := range userMap {
-		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(1)+gconv.String(2), v.UserInfo.Name)
-		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(2)+gconv.String(2), v.TotalCommitStats.Additions)
-		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(3)+gconv.String(2), v.TotalCommitStats.Deletions)
-		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(4)+gconv.String(2), v.TotalCommitStats.Total)
-	}
-	// 设置sheet2的头部
 	for k, v := range sheet2Head {
 		f.SetCellValue(sheet2Name, utility.ConvertNumToChar(k+1)+gconv.String(1), v)
 	}
-	// 设置sheet2的值
-	for _, v := range userMap {
-		n := 2
-		for k1, v1 := range v.ProjectCommitStats {
-			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(1)+gconv.String(n), v.UserInfo.Name)
-			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(2)+gconv.String(n), v.Projects[k1].PathWithNamespace)
-			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(3)+gconv.String(n), v1.Additions)
-			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(4)+gconv.String(n), v1.Deletions)
-			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(5)+gconv.String(n), v1.Total)
-			n++
+	for k, v := range sheet3Head {
+		f.SetCellValue(sheet3Name, utility.ConvertNumToChar(k+1)+gconv.String(1), v)
+	}
+	// 设置值
+	n, m, x := 2, 2, 2
+	sortUsers := garray.NewStrArrayFrom(userMap.Keys()).Sort()
+	for _, u := range sortUsers.Slice() {
+		v := userMap.Get(u).(*UserCommitStats)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(1)+gconv.String(n), v.UserInfo.Name)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(2)+gconv.String(n), v.TotalCommitStats.Additions)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(3)+gconv.String(n), v.TotalCommitStats.Deletions)
+		f.SetCellValue(sheet1Name, utility.ConvertNumToChar(4)+gconv.String(n), v.TotalCommitStats.Total)
+		sortPids := garray.NewIntArrayFrom(v.ProjectCommitStats.Keys()).Sort()
+		for _, pid := range sortPids.Slice() {
+			v1 := v.ProjectCommitStats.Get(pid).(*gitlab.CommitStats)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(1)+gconv.String(m), v.UserInfo.Name)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(2)+gconv.String(m), v.Projects.Get(pid).(projectInfo).PathWithNamespace)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(3)+gconv.String(m), v1.Additions)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(4)+gconv.String(m), v1.Deletions)
+			f.SetCellValue(sheet2Name, utility.ConvertNumToChar(5)+gconv.String(m), v1.Total)
+
+			sortCmts := v.ProjectCommit.Get(pid).([]*gitlab.Commit)
+			for _, c := range sortCmts {
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(1)+gconv.String(x), v.UserInfo.Name)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(2)+gconv.String(x), v.Projects.Get(pid).(projectInfo).PathWithNamespace)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(3)+gconv.String(x), c.CommittedDate.Format("2006-01-02 15:04:05"))
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(4)+gconv.String(x), c.ShortID)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(5)+gconv.String(x), c.Title)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(6)+gconv.String(x), c.Stats.Additions)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(7)+gconv.String(x), c.Stats.Deletions)
+				f.SetCellValue(sheet3Name, utility.ConvertNumToChar(8)+gconv.String(x), c.Stats.Total)
+				x++
+			}
+			m++
 		}
+		n++
 	}
 	// 设置工作簿的默认工作表
 	f.SetActiveSheet(sheet1Index)
@@ -768,6 +801,11 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 func (s *sGitlab) getAllProjectMap(ctx context.Context, parse *gcmd.Parser, options *gitlab.ListProjectsOptions) (projectMap map[int]*gitlab.Project) {
 	projectMap = make(map[int]*gitlab.Project)
 	gmap := gmap.New(true)
+	defer func() {
+		for k, v := range gmap.Map() {
+			projectMap[k.(int)] = v.(*gitlab.Project)
+		}
+	}()
 	page := 1
 	perPage := 100
 	searchSimple := true
@@ -811,15 +849,17 @@ func (s *sGitlab) getAllProjectMap(ctx context.Context, parse *gcmd.Parser, opti
 		}(page, &optionsCopy)
 	}
 	wg.Wait()
-	for k, v := range gmap.Map() {
-		projectMap[k.(int)] = v.(*gitlab.Project)
-	}
 	return
 }
 
 func (s *sGitlab) getAllUserMap(ctx context.Context, parse *gcmd.Parser, options *gitlab.ListUsersOptions) (userMap map[string]*gitlab.User) {
 	userMap = make(map[string]*gitlab.User)
 	gmap := gmap.New(true)
+	defer func() {
+		for k, v := range gmap.Map() {
+			userMap[k.(string)] = v.(*gitlab.User)
+		}
+	}()
 	page := 1
 	perPage := 100
 	searchActive := true
@@ -862,9 +902,6 @@ func (s *sGitlab) getAllUserMap(ctx context.Context, parse *gcmd.Parser, options
 		}(page, &optionsCopy)
 	}
 	wg.Wait()
-	for k, v := range gmap.Map() {
-		userMap[k.(string)] = v.(*gitlab.User)
-	}
 	return
 }
 
