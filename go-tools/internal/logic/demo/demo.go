@@ -18,5 +18,5 @@ func init() {
 
 func (s *sDemo) Demo(ctx context.Context, parser *gcmd.Parser) {
 	//g.Dump(parser.GetOptAll(), parser.GetArgAll())
-	service.Gitlab().StatsUserCodeLines(ctx, parser)
+	service.Gitlab().GetUserCommitStats(ctx, parser)
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/gogf/gf/v2/os/gcmd"
 	"github.com/gogf/gf/v2/util/gconv"
 	"strings"
+	"time"
 )
 
 func MapFromList(list []interface{}) map[string]int {
@@ -83,4 +84,22 @@ func ConvertNumToChar(num int) string {
 	col := ConvertNumToChar(v)
 	cols := col + ExcelChar[k]
 	return cols
+}
+
+func FormatDuration(d time.Duration) string {
+	var ret string
+	if d > time.Hour {
+		ret = fmt.Sprintf("%s%.0fh", ret, d.Hours())
+		d = d - d.Truncate(time.Hour)
+	}
+	if d > time.Minute {
+		ret = fmt.Sprintf("%s%.0fm", ret, d.Minutes())
+		d = d - d.Truncate(time.Minute)
+	}
+	if d > time.Second {
+		ret = fmt.Sprintf("%s%.0fs", ret, d.Seconds())
+		d = d - d.Truncate(time.Second)
+	}
+	ret = fmt.Sprintf("%s%dms", ret, d.Milliseconds())
+	return ret
 }
