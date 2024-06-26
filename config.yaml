@@ -7,7 +7,7 @@ gitlab:
     projectNames: "" #查询的项目名称列表，多个则逗号分割，匹配仓库名、描述
     accessLevel: "报告者" #访问权限，默认报告者
   clone:
-    codeDir: "/Users/xinfei/localcode/testcode" #clone时仓库存储目录
+    codeDir: "/tmp/code" #clone时仓库存储目录
     searchKey: "" #clone时搜索条件，匹配仓库名、描述
     filter:
       expectProjects: #期望的项目列表
@@ -22,3 +22,7 @@ gitlab:
         - ""
       ignoreTopGroups: #忽略的顶级组列表
         - ""
+  commitStats:
+    usernames: "" #gitlab用户名列表，逗号分割
+    startTime: "" #开始时间，如：2024-06-17 00:00:00
+    endTime: "" #截止时间，如：2024-06-17 00:00:00

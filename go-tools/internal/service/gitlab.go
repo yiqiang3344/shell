@@ -8,19 +8,16 @@ package service
 import (
 	"context"
 
-	"github.com/gogf/gf/v2/container/gmap"
 	"github.com/gogf/gf/v2/os/gcmd"
-	"github.com/xanzy/go-gitlab"
 )
 
 type (
 	IGitlab interface {
-		SetProjectsMember(ctx context.Context, parser *gcmd.Parser)
-		InputAccessLevel(ctx context.Context, parser *gcmd.Parser) (accessLevel string)
-		FindUserByUsername(ctx context.Context, parser *gcmd.Parser) (user *gitlab.User)
-		FindProjectsByNames(ctx context.Context, parser *gcmd.Parser) (projects *gmap.ListMap)
-		Clone(ctx context.Context, parse *gcmd.Parser)
+		// GetUserCommitStats 获取用户提交统计信息
 		GetUserCommitStats(ctx context.Context, parse *gcmd.Parser)
+		Clone(ctx context.Context, parse *gcmd.Parser)
+		// SetProjectsMember 设置仓库的用户权限
+		SetProjectsMember(ctx context.Context, parser *gcmd.Parser)
 	}
 )
 

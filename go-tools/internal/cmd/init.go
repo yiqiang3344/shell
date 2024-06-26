@@ -128,10 +128,43 @@ var (
 			return
 		},
 	}
+
+	gitlabCommitStats = &gcmd.Command{
+		Name:        "gitlabCommitStats",
+		Usage:       "./go-tools gitlabCommitStats",
+		Description: "统计指定gitlab用户指定时间范围的提交统计信息",
+		Arguments: append(gitlabCommonArs, []gcmd.Argument{
+			{
+				Name:   "usernames",
+				Short:  "u",
+				Brief:  "gitlab用户名列表，逗号分割。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "startTime",
+				Short:  "s",
+				Brief:  "开始时间。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endTime",
+				Short:  "e",
+				Brief:  "截止时间。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Gitlab().GetUserCommitStats(ctx, parser)
+			return
+		},
+	}
 )
 
 func Init() {
-	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone)
+	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats)
 	if err != nil {
 		panic(err)
 	}
