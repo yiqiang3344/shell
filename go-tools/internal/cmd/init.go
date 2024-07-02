@@ -85,7 +85,7 @@ var (
 			{
 				Name:   "projectNames",
 				Short:  "p",
-				Brief:  "gitlab仓库名，多个则逗号分割，如: name1,name2。也可以在配置文件中设置，优先使用命令行参数。",
+				Brief:  "gitlab仓库名（可以是完整组名加项目名，也可以是项目名，项目名可以模糊匹配，完整组名会精确匹配），多个则逗号分割，如: projectName1,group/projectName2。也可以在配置文件中设置，优先使用命令行参数。",
 				IsArg:  false,
 				Orphan: false,
 			},

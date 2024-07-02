@@ -126,6 +126,7 @@ func (s *sGitlab) findProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 		projectIds     []string
 		simpleRepoInfo = true
 	)
+
 	//根据仓库名确认仓库ID
 	projectNames := utility.GetArgString(ctx, parser, "gitlab.setProjectMember.projectNames", "projectNames")
 	for {
@@ -147,6 +148,15 @@ func (s *sGitlab) findProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 				flag = false
 				break
 			}
+
+			//如果带了仓库组名，则先以仓库名搜索，再通过组名过滤
+			group := ""
+			if strings.Contains(v, "/") {
+				arr := strings.Split(v, "/")
+				group = strings.Join(arr[0:len(arr)-1], "/")
+				v = arr[len(arr)-1]
+			}
+
 			var projectsTmp []*gitlab.Project
 			projectsTmp, _, err = s.gitClient.Projects.ListProjects(&gitlab.ListProjectsOptions{
 				Simple: &simpleRepoInfo,
@@ -164,8 +174,11 @@ func (s *sGitlab) findProjectsByNames(ctx context.Context, parser *gcmd.Parser) 
 				flag = false
 				break
 			}
-			for _, v := range projectsTmp {
-				tmpProjects.Set(v.ID, v)
+			for _, v1 := range projectsTmp {
+				if group != "" && v1.Namespace.FullPath != group {
+					continue
+				}
+				tmpProjects.Set(v1.ID, v1)
 			}
 		}
 		if !flag {
