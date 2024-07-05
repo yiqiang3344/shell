@@ -188,7 +188,6 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 						wg.Done()
 					}()
 					commits := s.getProjectCommits(ctx, parse, project.ID, &gitlab.ListCommitsOptions{
-						Author:    &uc1.UserInfo.Username,
 						Since:     &startTime.Time,
 						Until:     &endTime.Time,
 						WithStats: &withStats,
@@ -196,8 +195,8 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 					})
 					//遍历提交信息，获取代码行数
 					for _, cmt := range commits {
-						// 再次过滤，上面的查询过滤条件可能没生效
-						if cmt.CommitterEmail != uc1.UserInfo.Email {
+						// 过滤，按提交者的邮箱、名称和gitlab用户的邮箱、用户名、全名来比较
+						if cmt.CommitterEmail != uc1.UserInfo.Email && cmt.CommitterName != uc1.UserInfo.Username && cmt.CommitterName != uc1.UserInfo.Name {
 							continue
 						}
 						//记录项目提交明细

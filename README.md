@@ -30,6 +30,7 @@
 - `./go-tools-mac setGitlabProjectsMember` 给指定用户名的gitlab用户批量设置指定仓库的权限，可通过配置、命令行选项或终端交互方式设置参数。
 - `./go-tools-mac gitClone` 批量clone仓库的代码到指定目录，可通过配置、命令行选项或终端交互方式设置参数。
 - `./go-tools-mac gitlabCommitStats` 统计指定gitlab用户指定时间范围的提交统计信息。
+  - 注意：判断提交是否属于指定用户的逻辑是，提交的提交者(非作者)的名称和gitlab用户名或全名匹配 或 提交的提交者(非作者)的邮箱和gitlab用户邮箱匹配。
   - 命令效果![gitlabCommitStatsDemo.jpg](images%2FgitlabCommitStatsDemo.jpg)
   - excel效果:
   - ![gitlabCommitStatsDemo1.jpg](images%2FgitlabCommitStatsDemo1.jpg)
