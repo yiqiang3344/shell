@@ -10,6 +10,9 @@
 temp/
 main
 demo
+gitlabCommitStats
+setGitlabProjectsMember
+setProjectMember
 init
 nohup.out
 /bin/darwin_amd64

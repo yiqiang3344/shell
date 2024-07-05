@@ -158,7 +158,7 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 		bar.Finish()
 	}
 
-	withStats := true
+	withStats, withAllCmt := true, true
 	barMax := gtype.NewInt(0)
 	if !utility.IsDebug(ctx, parse) {
 		//先预设一个总数
@@ -192,6 +192,7 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 						Since:     &startTime.Time,
 						Until:     &endTime.Time,
 						WithStats: &withStats,
+						All:       &withAllCmt,
 					})
 					//遍历提交信息，获取代码行数
 					for _, cmt := range commits {
