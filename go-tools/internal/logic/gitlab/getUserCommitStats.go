@@ -195,8 +195,8 @@ func (s *sGitlab) GetUserCommitStats(ctx context.Context, parse *gcmd.Parser) {
 					})
 					//遍历提交信息，获取代码行数
 					for _, cmt := range commits {
-						// 过滤，按提交者的邮箱、名称和gitlab用户的邮箱、用户名、全名来比较
-						if cmt.CommitterEmail != uc1.UserInfo.Email && cmt.CommitterName != uc1.UserInfo.Username && cmt.CommitterName != uc1.UserInfo.Name {
+						// 判断是否是用户的提交的逻辑：提交的提交者或作者的名称和gitlab用户名或全名匹配 或 提交的提交者或作者的邮箱和gitlab用户邮箱匹配
+						if cmt.CommitterEmail != uc1.UserInfo.Email && cmt.CommitterName != uc1.UserInfo.Username && cmt.CommitterName != uc1.UserInfo.Name && cmt.AuthorEmail != uc1.UserInfo.Email && cmt.AuthorName != uc1.UserInfo.Username && cmt.AuthorName != uc1.UserInfo.Name {
 							continue
 						}
 						//记录项目提交明细
