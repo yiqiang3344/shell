@@ -161,10 +161,81 @@ var (
 			return
 		},
 	}
+	aliSlsAlerts = &gcmd.Command{
+		Name:        "aliSlsAlerts",
+		Usage:       "./go-tools aliSlsAlerts",
+		Description: "导出阿里云日志服务告警规则",
+		Arguments: append(gitlabCommonArs, []gcmd.Argument{
+			{
+				Name:   "projects",
+				Short:  "p",
+				Brief:  "project列表，逗号分割。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "accessKeyId",
+				Short:  "i",
+				Brief:  "accessKeyId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "accessKeySecret",
+				Short:  "s",
+				Brief:  "accessKeySecret。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endpoint",
+				Short:  "e",
+				Brief:  "endpoint。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Sls().ExportAlerts(ctx, parser)
+			return
+		},
+	}
+	aliArmsPromAlerts = &gcmd.Command{
+		Name:        "aliArmsPromAlerts",
+		Usage:       "./go-tools aliArmsPromAlerts",
+		Description: "导出阿里云arms promethues告警规则",
+		Arguments: append(gitlabCommonArs, []gcmd.Argument{
+			{
+				Name:   "accessKeyId",
+				Short:  "i",
+				Brief:  "accessKeyId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "accessKeySecret",
+				Short:  "s",
+				Brief:  "accessKeySecret。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endpoint",
+				Short:  "e",
+				Brief:  "endpoint。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Arms().ExportPromAlerts(ctx, parser)
+			return
+		},
+	}
 )
 
 func Init() {
-	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats)
+	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts)
 	if err != nil {
 		panic(err)
 	}

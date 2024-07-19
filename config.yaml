@@ -26,3 +26,8 @@ gitlab:
     usernames: "" #gitlab用户名列表，逗号分割
     startTime: "" #开始时间，如：2024-06-17 00:00:00
     endTime: "" #截止时间，如：2024-06-17 00:00:00
+sls:
+  endpoint: ""
+  accessKeyId: ""
+  accessKeySecret: ""
+  projects: ""
