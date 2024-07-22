@@ -40,7 +40,7 @@ func (s *sArms) ExportPromAlerts(ctx context.Context, parse *gcmd.Parser) {
 		break
 	}
 
-	notificationPolices, err := s.getAllNotificationPolicies(regionId)
+	notificationPolices, err := s.getAllNotificationPolicies(regionId, false)
 	if err != nil {
 		utility.Errorf("查询通知策略接口调用异常:%v", err)
 		return
@@ -187,29 +187,6 @@ func (s *sArms) getAllPromAlerts(RegionId string) (list []*arms20190808.GetAlert
 			list = append(list, ret.Body.PageBean.AlertRules...)
 		}
 		page++
-	}
-	return
-}
-
-func (s *sArms) getAllNotificationPolicies(RegionId string) (list []*arms20190808.ListNotificationPoliciesResponseBodyPageBeanNotificationPolicies, err error) {
-	var page int64 = 1
-	var size int64 = 10000
-	runtime := &util.RuntimeOptions{}
-	listAlertsRequest := &arms20190808.ListNotificationPoliciesRequest{
-		Size:     &size,
-		Page:     &page,
-		RegionId: &RegionId,
-	}
-	ret, err := s.client.ListNotificationPoliciesWithOptions(listAlertsRequest, runtime)
-	if err != nil {
-		return
-	}
-	if ret.Body != nil && ret.Body.PageBean != nil && ret.Body.PageBean.Total != nil && *ret.Body.PageBean.Total > size {
-		err = fmt.Errorf("总数大于%d，请调整size大小", size)
-		return
-	}
-	if ret.Body != nil && ret.Body.PageBean != nil && ret.Body.PageBean.NotificationPolicies != nil {
-		list = append(list, ret.Body.PageBean.NotificationPolicies...)
 	}
 	return
 }

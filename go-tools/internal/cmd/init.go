@@ -239,10 +239,49 @@ var (
 			return
 		},
 	}
+	aliArmsAlertHistory = &gcmd.Command{
+		Name:        "aliArmsAlertHistory",
+		Usage:       "./go-tools aliArmsAlertHistory",
+		Description: "导出阿里云arms告警记录",
+		Arguments: append(gitlabCommonArs, []gcmd.Argument{
+			{
+				Name:   "accessKeyId",
+				Short:  "i",
+				Brief:  "accessKeyId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "accessKeySecret",
+				Short:  "s",
+				Brief:  "accessKeySecret。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endpoint",
+				Short:  "e",
+				Brief:  "endpoint。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "regionId",
+				Short:  "e",
+				Brief:  "regionId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Arms().ExportAlertHistory(ctx, parser)
+			return
+		},
+	}
 )
 
 func Init() {
-	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts)
+	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts, aliArmsAlertHistory)
 	if err != nil {
 		panic(err)
 	}
