@@ -226,6 +226,13 @@ var (
 				IsArg:  false,
 				Orphan: false,
 			},
+			{
+				Name:   "regionId",
+				Short:  "e",
+				Brief:  "regionId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
 		}...),
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 			service.Arms().ExportPromAlerts(ctx, parser)

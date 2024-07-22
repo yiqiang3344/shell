@@ -37,6 +37,7 @@
   - ![gitlabCommitStatsDemo2.jpg](images%2FgitlabCommitStatsDemo2.jpg)
   - ![gitlabCommitStatsDemo3.jpg](images%2FgitlabCommitStatsDemo3.jpg)
 - `./go-tools-mac aliSlsAlerts` 导出阿里云日志服务中指定project的告警规则到excel文件。
+- `./go-tools-mac aliArmsPromAlerts` 导出阿里云arms中promethues告警规则到excel文件。
 
 ### [go-tools-linux](go-tools-linux) go版本工具集linux系统版，详情同[go-tools-mac](go-tools-mac)
 

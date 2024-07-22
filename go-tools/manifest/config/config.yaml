@@ -30,3 +30,8 @@ sls:
   accessKeyId: ""
   accessKeySecret: ""
   projects: ""
+arms:
+  endpoint: ""
+  accessKeyId: ""
+  accessKeySecret: ""
+  regionId: ""
