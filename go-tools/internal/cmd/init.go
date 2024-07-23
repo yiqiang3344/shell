@@ -267,8 +267,15 @@ var (
 			},
 			{
 				Name:   "regionId",
-				Short:  "e",
+				Short:  "r",
 				Brief:  "regionId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "startTime",
+				Short:  "b",
+				Brief:  "startTime。也可以在配置文件中设置，优先使用命令行参数。",
 				IsArg:  false,
 				Orphan: false,
 			},
@@ -278,10 +285,49 @@ var (
 			return
 		},
 	}
+	aliArmsAlertHistoryHourCron = &gcmd.Command{
+		Name:        "aliArmsAlertHistoryHourCron",
+		Usage:       "./go-tools aliArmsAlertHistoryHourCron",
+		Description: "每小时定时导出阿里云arms告警记录",
+		Arguments: append(gitlabCommonArs, []gcmd.Argument{
+			{
+				Name:   "accessKeyId",
+				Short:  "i",
+				Brief:  "accessKeyId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "accessKeySecret",
+				Short:  "s",
+				Brief:  "accessKeySecret。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endpoint",
+				Short:  "e",
+				Brief:  "endpoint。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "regionId",
+				Short:  "r",
+				Brief:  "regionId。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Arms().ExportAlertHistoryHourCron(ctx, parser)
+			return
+		},
+	}
 )
 
 func Init() {
-	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts, aliArmsAlertHistory)
+	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts, aliArmsAlertHistory, aliArmsAlertHistoryHourCron)
 	if err != nil {
 		panic(err)
 	}

@@ -20,3 +20,4 @@ nohup.out
 **/config.local.yaml
 **/config.xinfei.yaml
 *.xlsx
+*.log

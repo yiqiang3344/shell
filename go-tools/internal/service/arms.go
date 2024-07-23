@@ -13,6 +13,7 @@ import (
 
 type (
 	IArms interface {
+		ExportAlertHistoryHourCron(ctx context.Context, parse *gcmd.Parser)
 		ExportAlertHistory(ctx context.Context, parse *gcmd.Parser)
 		ExportPromAlerts(ctx context.Context, parse *gcmd.Parser)
 	}

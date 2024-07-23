@@ -7,10 +7,12 @@ import (
 	util "github.com/alibabacloud-go/tea-utils/v2/service"
 	"github.com/alibabacloud-go/tea/tea"
 	"github.com/gogf/gf/v2/container/garray"
-	"github.com/gogf/gf/v2/frame/g"
 	"github.com/gogf/gf/v2/os/gcmd"
+	"github.com/gogf/gf/v2/os/gcron"
+	"github.com/gogf/gf/v2/os/gfile"
 	"github.com/gogf/gf/v2/os/gtime"
 	"github.com/gogf/gf/v2/util/gconv"
+	"github.com/xuri/excelize/v2"
 	"go-tools/internal/utility"
 	"math"
 	"strings"
@@ -35,9 +37,9 @@ type Alert struct {
 	DispatchRuleName  string      //通知策略名称
 	DispatchRuleId    string      //通知策略ID
 	CreateTime        *gtime.Time //创建时间
-	ClaimTime         int32       //首次认领耗时(分钟)
-	HandleCostTime    int32       //首次处理耗时(分钟)
-	RecoverCostTime   int32       //恢复耗时(分钟)
+	ClaimCostTime     string      //首次认领耗时(分钟)
+	HandleCostTime    string      //首次处理耗时(分钟)
+	RecoverCostTime   string      //恢复耗时(分钟)
 }
 
 var stateMap = map[int64]string{
@@ -46,9 +48,32 @@ var stateMap = map[int64]string{
 	2: "已处理",
 }
 
+func (s *sArms) ExportAlertHistoryHourCron(ctx context.Context, parse *gcmd.Parser) {
+	var (
+		err error
+	)
+	_, err = gcron.AddSingleton(ctx, "0 0 * * * *", func(ctx context.Context) {
+		s.ExportAlertHistory(ctx, parse)
+	})
+	if err != nil {
+		panic(err)
+	}
+	select {}
+}
+
 func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 	var (
-		alerts []*Alert
+		alerts = garray.NewSortedArray(func(a, b interface{}) int {
+			if a.(*Alert).Id > b.(*Alert).Id {
+				return 1
+			} else if a.(*Alert).Id < b.(*Alert).Id {
+				return -1
+			} else {
+				return 0
+			}
+		})
+		sTime = gtime.Now()
+		f     *excelize.File
 	)
 
 	if err := s.initClient(ctx, parse); err != nil {
@@ -65,10 +90,14 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		break
 	}
 
-	//开始时间为当前时间2小时前整点小时时间
-	startTime := gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:00:00")
+	startTime := utility.GetArgString(ctx, parse, "arms.startTime", "startTime")
+	if strings.Trim(startTime, " ") == "" {
+		//开始时间为当前时间2小时前整点小时时间
+		startTime = gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:00:00")
+	}
+
 	//截止时间为当前时间1小时前整点小时时间
-	endTime := gtime.Now().Add(-1 * time.Hour).Format("Y-m-d H:00:00")
+	endTime := gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:59:59")
 
 	list, err := s.getAllAlertHistory(regionId, startTime, endTime)
 	if err != nil {
@@ -117,7 +146,6 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 
 	//整理数据
 	for _, v := range list {
-		//过滤 todo
 		if v.DispatchRuleId == nil {
 			continue
 		}
@@ -140,10 +168,14 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			DispatchRuleName:  gconv.String(v.DispatchRuleName),
 			DispatchRuleId:    gconv.String(v.DispatchRuleId),
 			CreateTime:        gtime.NewFromStr(*v.CreateTime),
+			ClaimCostTime:     "",
+			RecoverCostTime:   "",
+			HandleCostTime:    "",
 		}
 		//恢复时间
 		if v.RecoverTime != nil {
 			a.RecoverTime = a.CreateTime.Add(time.Duration(*v.RecoverTime) * time.Second)
+			a.RecoverCostTime = fmt.Sprintf("%d分", *v.RecoverTime/60)
 		}
 		//获取通知、认领、处理信息
 		activeMap := map[int64]*garray.Array{
@@ -154,6 +186,9 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			5: garray.NewArray(false),
 		}
 		for _, v1 := range v.Activities {
+			if _, ok := activeMap[*v1.Type]; !ok {
+				continue
+			}
 			activeMap[*v1.Type].Append(v1)
 		}
 		//获取通知信息
@@ -170,6 +205,7 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			v2, _ := activeMap[1].Reverse().Get(0) //倒序排序获取第一个
 			a.FirstClaimTime = gtime.NewFromStr(*v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).Time)
 			a.FirstClaimMember = *v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).HandlerName
+			a.ClaimCostTime = fmt.Sprintf("%.0f分", a.FirstClaimTime.Sub(a.CreateTime).Minutes())
 		}
 		//获取关闭信息
 		if activeMap[4].Len() > 0 {
@@ -177,13 +213,99 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			a.FirstHandleTime = gtime.NewFromStr(*v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).Time)
 			a.FirstHandleMember = *v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).HandlerName
 			a.FirstHandleDesc = *v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).Description
+			a.HandleCostTime = fmt.Sprintf("%.0f分", a.FirstHandleTime.Sub(a.CreateTime).Minutes())
 		}
 
-		alerts = append(alerts, a)
+		alerts.Append(a)
 	}
 
-	g.Dump(alerts[0:2])
-	//todo 追加到excel中，每周生成一个新的excel
+	//追加到excel中，每周生成一个新的excel
+	rowNum := 2
+	excelFilepath := fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.Now().Format("Y年第W周"))
+	sheetName := "Sheet1"
+	if gfile.Exists(excelFilepath) {
+		//如果excel存在则查询新写入的行数
+		f, err = excelize.OpenFile(excelFilepath)
+		if err != nil {
+			utility.Errorf("打开excel异常:%v", err)
+			return
+		}
+		rows, err := f.GetRows("Sheet1")
+		if err != nil {
+			utility.Errorf("获取excel行数异常:%v", err)
+			return
+		}
+		rowNum = len(rows) + 1
+	} else {
+		f = excelize.NewFile()
+		defer func() {
+			if err := f.Close(); err != nil {
+				utility.Errorf("excel关闭异常:%v", err)
+			}
+		}()
+		//不存在则设置头部
+		type cell struct {
+			Name  string
+			Width float64
+		}
+		sheetHead := []cell{
+			{Name: "创建时间", Width: 18},
+			{Name: "ID", Width: 10},
+			{Name: "等级", Width: 5},
+			{Name: "名称", Width: 35},
+			{Name: "状态", Width: 6},
+			{Name: "恢复时间", Width: 18},
+			{Name: "通知时间", Width: 18},
+			{Name: "通知对象", Width: 50},
+			{Name: "首次认领时间", Width: 18},
+			{Name: "首次认领人", Width: 10},
+			{Name: "首次处理时间", Width: 18},
+			{Name: "首次处理人", Width: 10},
+			{Name: "首次处理描述", Width: 30},
+			{Name: "恢复耗时", Width: 10},
+			{Name: "认领耗时", Width: 10},
+			{Name: "处理耗时", Width: 10},
+			{Name: "通知机器人", Width: 30},
+			{Name: "通知策略", Width: 30},
+			{Name: "通知策略ID", Width: 10},
+			{Name: "告警内容", Width: 100},
+		}
+		// 设置头部
+		for k, v := range sheetHead {
+			f.SetCellValue(sheetName, utility.ConvertNumToChar(k+1)+gconv.String(1), v.Name)
+			f.SetColWidth(sheetName, utility.ConvertNumToChar(k+1), utility.ConvertNumToChar(k+1), v.Width)
+		}
+	}
+
+	for k, vv := range alerts.Slice() {
+		v := vv.(*Alert)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(1)+gconv.String(rowNum+k), v.CreateTime.Format("Y-m-d H:i:s"))
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(2)+gconv.String(rowNum+k), v.Id)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(3)+gconv.String(rowNum+k), v.Severity)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(4)+gconv.String(rowNum+k), v.Name)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(5)+gconv.String(rowNum+k), v.State)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(6)+gconv.String(rowNum+k), v.RecoverTime.Format("Y-m-d H:i:s"))
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(7)+gconv.String(rowNum+k), v.NotifyTime.Format("Y-m-d H:i:s"))
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(8)+gconv.String(rowNum+k), v.NotifyObject)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(9)+gconv.String(rowNum+k), v.FirstClaimTime.Format("Y-m-d H:i:s"))
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(10)+gconv.String(rowNum+k), v.FirstClaimMember)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(11)+gconv.String(rowNum+k), v.FirstHandleTime.Format("Y-m-d H:i:s"))
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(12)+gconv.String(rowNum+k), v.FirstHandleMember)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(13)+gconv.String(rowNum+k), v.FirstHandleDesc)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(14)+gconv.String(rowNum+k), v.RecoverCostTime)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(15)+gconv.String(rowNum+k), v.ClaimCostTime)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(16)+gconv.String(rowNum+k), v.HandleCostTime)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(17)+gconv.String(rowNum+k), v.NotifyRobots)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(18)+gconv.String(rowNum+k), v.DispatchRuleName)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(19)+gconv.String(rowNum+k), v.DispatchRuleId)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(20)+gconv.String(rowNum+k), v.NotifyContent)
+	}
+	// 根据指定路径保存文件
+	if err := f.SaveAs(excelFilepath); err != nil {
+		utility.Errorf("excel保存异常:%v", err)
+	}
+	fmt.Printf("excel文件生成完毕，地址:%s\n", excelFilepath)
+	fmt.Printf("%s开始，统计%s到%s的数据，总耗时:%s\n", sTime.Format("Y-m-d H:i:s"), startTime, endTime, utility.FormatDuration(gtime.Now().Sub(sTime)))
 }
 
 func (s *sArms) getAllAlertHistory(RegionId string, startTime string, endTime string) (list []*arms20190808.ListAlertsResponseBodyPageBeanListAlerts, err error) {
