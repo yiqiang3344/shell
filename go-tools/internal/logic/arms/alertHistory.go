@@ -72,12 +72,18 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 				return 0
 			}
 		})
-		sTime = gtime.Now()
-		f     *excelize.File
+		sTime  = gtime.Now()
+		f      *excelize.File
+		rowNum = 2
+		rows   [][]string
+		//追加到excel中，每周生成一个新的excel
+		excelFilepath = fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.Now().Format("Y年第W周"))
+		sheetName     = "Sheet1"
+		err           error
 	)
 
-	if err := s.initClient(ctx, parse); err != nil {
-		utility.Errorf("初始化客户端异常:%v", err)
+	if err = s.initClient(ctx, parse); err != nil {
+		utility.Errorf("%s 初始化客户端异常:%v", sTime.Format("Y-m-d H:i:s"), err)
 		return
 	}
 
@@ -90,25 +96,89 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		break
 	}
 
+	if gfile.Exists(excelFilepath) {
+		//如果excel存在则查询新写入的行数
+		f, err = excelize.OpenFile(excelFilepath)
+		if err != nil {
+			utility.Errorf("%s 打开excel异常:%v", sTime.Format("Y-m-d H:i:s"), err)
+			return
+		}
+		rows, err = f.GetRows("Sheet1")
+		if err != nil {
+			utility.Errorf("%s 获取excel行数异常:%v", sTime.Format("Y-m-d H:i:s"), err)
+			return
+		}
+		rowNum = len(rows) + 1
+	} else {
+		f = excelize.NewFile()
+		defer func() {
+			if err = f.Close(); err != nil {
+				utility.Errorf("%s excel关闭异常:%v", sTime.Format("Y-m-d H:i:s"), err)
+			}
+		}()
+		//不存在则设置头部
+		type cell struct {
+			Name  string
+			Width float64
+		}
+		sheetHead := []cell{
+			{Name: "创建时间", Width: 18},
+			{Name: "ID", Width: 10},
+			{Name: "等级", Width: 5},
+			{Name: "名称", Width: 35},
+			{Name: "状态", Width: 6},
+			{Name: "恢复时间", Width: 18},
+			{Name: "通知时间", Width: 18},
+			{Name: "通知对象", Width: 50},
+			{Name: "首次认领时间", Width: 18},
+			{Name: "首次认领人", Width: 10},
+			{Name: "首次处理时间", Width: 18},
+			{Name: "首次处理人", Width: 10},
+			{Name: "首次处理描述", Width: 30},
+			{Name: "恢复耗时", Width: 10},
+			{Name: "认领耗时", Width: 10},
+			{Name: "处理耗时", Width: 10},
+			{Name: "通知机器人", Width: 30},
+			{Name: "通知策略", Width: 30},
+			{Name: "通知策略ID", Width: 10},
+			{Name: "告警内容", Width: 100},
+		}
+		// 设置头部
+		for k, v := range sheetHead {
+			f.SetCellValue(sheetName, utility.ConvertNumToChar(k+1)+gconv.String(1), v.Name)
+			f.SetColWidth(sheetName, utility.ConvertNumToChar(k+1), utility.ConvertNumToChar(k+1), v.Width)
+		}
+	}
+
 	startTime := utility.GetArgString(ctx, parse, "arms.startTime", "startTime")
 	if strings.Trim(startTime, " ") == "" {
-		//开始时间为当前时间2小时前整点小时时间
-		startTime = gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:00:00")
+		//如果没有现有数据，则开始时间为当前时间3天前0点，如果有则为最后一条数据的创建时间+1秒
+		if rowNum == 2 {
+			startTime = gtime.Now().Add(-3 * 24 * time.Hour).Format("Y-m-d 00:00:00")
+		} else {
+			startTime = gtime.NewFromStr(rows[len(rows)-1][0]).Add(1 * time.Second).Format("Y-m-d H:i:s")
+		}
 	}
 
 	//截止时间为当前时间1小时前整点小时时间
 	endTime := gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:59:59")
 
+	//如果截止时间小于开始时间则退出
+	if gtime.NewFromStr(endTime).Before(gtime.NewFromStr(startTime)) {
+		utility.Errorf("%s 截止时间%s小于开始时间%s", sTime.Format("Y-m-d H:i:s"), endTime, startTime)
+		return
+	}
+
 	list, err := s.getAllAlertHistory(regionId, startTime, endTime)
 	if err != nil {
-		utility.Errorf("获取告警历史异常:%v", err)
+		utility.Errorf("%s 获取告警历史异常:%v", sTime.Format("Y-m-d H:i:s"), err)
 		return
 	}
 
 	//获取联系人组数据
 	contactGroups, err := s.getAllContactGroups(regionId, true)
 	if err != nil {
-		utility.Errorf("查询联系人组接口调用异常:%v", err)
+		utility.Errorf("%s 查询联系人组接口调用异常:%v", sTime.Format("Y-m-d H:i:s"), err)
 		return
 	}
 	contactGroupMap := map[int64]*arms20190808.DescribeContactGroupsResponseBodyPageBeanAlertContactGroups{}
@@ -119,7 +189,7 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 	//获取通知策略数据
 	notifies, err := s.getAllNotificationPolicies(regionId, true)
 	if err != nil {
-		utility.Errorf("查询通知策略接口调用异常:%v", err)
+		utility.Errorf("%s 查询通知策略接口调用异常:%v", sTime.Format("Y-m-d H:i:s"), err)
 		return
 	}
 	notifyMap := map[int64]string{}
@@ -219,64 +289,6 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		alerts.Append(a)
 	}
 
-	//追加到excel中，每周生成一个新的excel
-	rowNum := 2
-	excelFilepath := fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.Now().Format("Y年第W周"))
-	sheetName := "Sheet1"
-	if gfile.Exists(excelFilepath) {
-		//如果excel存在则查询新写入的行数
-		f, err = excelize.OpenFile(excelFilepath)
-		if err != nil {
-			utility.Errorf("打开excel异常:%v", err)
-			return
-		}
-		rows, err := f.GetRows("Sheet1")
-		if err != nil {
-			utility.Errorf("获取excel行数异常:%v", err)
-			return
-		}
-		rowNum = len(rows) + 1
-	} else {
-		f = excelize.NewFile()
-		defer func() {
-			if err := f.Close(); err != nil {
-				utility.Errorf("excel关闭异常:%v", err)
-			}
-		}()
-		//不存在则设置头部
-		type cell struct {
-			Name  string
-			Width float64
-		}
-		sheetHead := []cell{
-			{Name: "创建时间", Width: 18},
-			{Name: "ID", Width: 10},
-			{Name: "等级", Width: 5},
-			{Name: "名称", Width: 35},
-			{Name: "状态", Width: 6},
-			{Name: "恢复时间", Width: 18},
-			{Name: "通知时间", Width: 18},
-			{Name: "通知对象", Width: 50},
-			{Name: "首次认领时间", Width: 18},
-			{Name: "首次认领人", Width: 10},
-			{Name: "首次处理时间", Width: 18},
-			{Name: "首次处理人", Width: 10},
-			{Name: "首次处理描述", Width: 30},
-			{Name: "恢复耗时", Width: 10},
-			{Name: "认领耗时", Width: 10},
-			{Name: "处理耗时", Width: 10},
-			{Name: "通知机器人", Width: 30},
-			{Name: "通知策略", Width: 30},
-			{Name: "通知策略ID", Width: 10},
-			{Name: "告警内容", Width: 100},
-		}
-		// 设置头部
-		for k, v := range sheetHead {
-			f.SetCellValue(sheetName, utility.ConvertNumToChar(k+1)+gconv.String(1), v.Name)
-			f.SetColWidth(sheetName, utility.ConvertNumToChar(k+1), utility.ConvertNumToChar(k+1), v.Width)
-		}
-	}
-
 	for k, vv := range alerts.Slice() {
 		v := vv.(*Alert)
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(1)+gconv.String(rowNum+k), v.CreateTime.Format("Y-m-d H:i:s"))
@@ -301,8 +313,8 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(20)+gconv.String(rowNum+k), v.NotifyContent)
 	}
 	// 根据指定路径保存文件
-	if err := f.SaveAs(excelFilepath); err != nil {
-		utility.Errorf("excel保存异常:%v", err)
+	if err = f.SaveAs(excelFilepath); err != nil {
+		utility.Errorf("%s excel保存异常:%v", sTime.Format("Y-m-d H:i:s"), err)
 	}
 	fmt.Printf("excel文件生成完毕，地址:%s\n", excelFilepath)
 	fmt.Printf("%s开始，统计%s到%s的数据，总耗时:%s\n", sTime.Format("Y-m-d H:i:s"), startTime, endTime, utility.FormatDuration(gtime.Now().Sub(sTime)))
