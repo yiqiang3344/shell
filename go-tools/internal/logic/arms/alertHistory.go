@@ -32,7 +32,7 @@ type Alert struct {
 	FirstClaimTime    *gtime.Time //首次认领时间
 	FirstHandleMember string      //首次处理人
 	FirstHandleTime   *gtime.Time //首次处理时间
-	FirstHandleDesc   string      //首次处理描述
+	Solution          string      //解决方案
 	NotifyRobots      string      //通知机器人
 	DispatchRuleName  string      //通知策略名称
 	DispatchRuleId    string      //通知策略ID
@@ -133,8 +133,8 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			{Name: "首次认领时间", Width: 18},
 			{Name: "首次认领人", Width: 10},
 			{Name: "首次处理时间", Width: 18},
-			{Name: "首次处理人", Width: 10},
-			{Name: "首次处理描述", Width: 30},
+			{Name: "首次处理人", Width: 12},
+			{Name: "解决方案", Width: 20},
 			{Name: "恢复耗时", Width: 10},
 			{Name: "认领耗时", Width: 10},
 			{Name: "处理耗时", Width: 10},
@@ -152,9 +152,9 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 
 	startTime := utility.GetArgString(ctx, parse, "arms.startTime", "startTime")
 	if strings.Trim(startTime, " ") == "" {
-		//如果没有现有数据，则开始时间为当前时间3天前0点，如果有则为最后一条数据的创建时间+1秒
+		//如果没有现有数据，则开始时间为当前时间2天前0点，如果有则为最后一条数据的创建时间+1秒
 		if rowNum == 2 {
-			startTime = gtime.Now().Add(-3 * 24 * time.Hour).Format("Y-m-d 00:00:00")
+			startTime = gtime.Now().Add(-2 * 24 * time.Hour).Format("Y-m-d 00:00:00")
 		} else {
 			startTime = gtime.NewFromStr(rows[len(rows)-1][0]).Add(1 * time.Second).Format("Y-m-d H:i:s")
 		}
@@ -233,7 +233,7 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			FirstClaimTime:    nil,
 			FirstHandleMember: "",
 			FirstHandleTime:   nil,
-			FirstHandleDesc:   "",
+			Solution:          gconv.String(v.Solution),
 			NotifyRobots:      gconv.String(v.NotifyRobots),
 			DispatchRuleName:  gconv.String(v.DispatchRuleName),
 			DispatchRuleId:    gconv.String(v.DispatchRuleId),
@@ -282,7 +282,6 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 			v2, _ := activeMap[4].Reverse().Get(0) //倒序排序获取第一个
 			a.FirstHandleTime = gtime.NewFromStr(*v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).Time)
 			a.FirstHandleMember = *v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).HandlerName
-			a.FirstHandleDesc = *v2.(*arms20190808.ListAlertsResponseBodyPageBeanListAlertsActivities).Description
 			a.HandleCostTime = fmt.Sprintf("%.0f分", a.FirstHandleTime.Sub(a.CreateTime).Minutes())
 		}
 
@@ -303,7 +302,7 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(10)+gconv.String(rowNum+k), v.FirstClaimMember)
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(11)+gconv.String(rowNum+k), v.FirstHandleTime.Format("Y-m-d H:i:s"))
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(12)+gconv.String(rowNum+k), v.FirstHandleMember)
-		f.SetCellValue(sheetName, utility.ConvertNumToChar(13)+gconv.String(rowNum+k), v.FirstHandleDesc)
+		f.SetCellValue(sheetName, utility.ConvertNumToChar(13)+gconv.String(rowNum+k), v.Solution)
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(14)+gconv.String(rowNum+k), v.RecoverCostTime)
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(15)+gconv.String(rowNum+k), v.ClaimCostTime)
 		f.SetCellValue(sheetName, utility.ConvertNumToChar(16)+gconv.String(rowNum+k), v.HandleCostTime)
