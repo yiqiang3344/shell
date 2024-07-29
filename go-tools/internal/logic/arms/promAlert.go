@@ -175,7 +175,7 @@ func (s *sArms) getAllPromAlerts(RegionId string) (list []*arms20190808.GetAlert
 		list = append(list, ret.Body.PageBean.AlertRules...)
 	}
 	total = *ret.Body.PageBean.Total
-	pageCnt = int64(math.Ceil(float64(total / size)))
+	pageCnt = int64(math.Ceil(float64(total) / float64(size)))
 	page = 2
 	for page <= pageCnt {
 		listAlertsRequest.Page = &page

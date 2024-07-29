@@ -72,12 +72,15 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 				return 0
 			}
 		})
-		sTime  = gtime.Now()
-		f      *excelize.File
-		rowNum = 2
-		rows   [][]string
+		sTime     = gtime.Now()
+		f         *excelize.File
+		rowNum    = 2
+		rows      [][]string
+		startTime string
+		//截止时间为当前时间1小时前整点小时时间
+		endTime = gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:59:59")
 		//追加到excel中，每周生成一个新的excel
-		excelFilepath = fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.Now().Format("Y年第W周"))
+		excelFilepath = fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.NewFromStr(endTime).Format("Y年第W周"))
 		sheetName     = "Sheet1"
 		err           error
 	)
@@ -150,18 +153,22 @@ func (s *sArms) ExportAlertHistory(ctx context.Context, parse *gcmd.Parser) {
 		}
 	}
 
-	startTime := utility.GetArgString(ctx, parse, "arms.startTime", "startTime")
+	startTime = utility.GetArgString(ctx, parse, "arms.startTime", "startTime")
 	if strings.Trim(startTime, " ") == "" {
-		//如果没有现有数据，则开始时间为当前时间2天前0点，如果有则为最后一条数据的创建时间+1秒
 		if rowNum == 2 {
-			startTime = gtime.Now().Add(-2 * 24 * time.Hour).Format("Y-m-d 00:00:00")
+			lastWeekFilePath := fmt.Sprintf("%s/所有告警记录%s.xlsx", gfile.Pwd(), gtime.NewFromStr(endTime).AddDate(0, 0, -1).Format("Y年第W周"))
+			if lastWeekFilePath != excelFilepath && gfile.Exists(lastWeekFilePath) {
+				//跨周日，且上周有数据，开始时间为当天0点
+				startTime = gtime.Now().Format("Y-m-d 00:00:00")
+			} else {
+				//即不是跨周且上周数据，之前也没有数据，则说明是第一次执行，开始时间为当前时间2天前0点
+				startTime = gtime.Now().Add(-2 * 24 * time.Hour).Format("Y-m-d 00:00:00")
+			}
 		} else {
+			//如果有现有数据，开始时间为最后一条数据的创建时间+1秒
 			startTime = gtime.NewFromStr(rows[len(rows)-1][0]).Add(1 * time.Second).Format("Y-m-d H:i:s")
 		}
 	}
-
-	//截止时间为当前时间1小时前整点小时时间
-	endTime := gtime.Now().Add(-2 * time.Hour).Format("Y-m-d H:59:59")
 
 	//如果截止时间小于开始时间则退出
 	if gtime.NewFromStr(endTime).Before(gtime.NewFromStr(startTime)) {
@@ -341,7 +348,7 @@ func (s *sArms) getAllAlertHistory(RegionId string, startTime string, endTime st
 		list = append(list, ret.Body.PageBean.ListAlerts...)
 	}
 	total = *ret.Body.PageBean.Total
-	pageCnt = int64(math.Ceil(float64(total / size)))
+	pageCnt = int64(math.Ceil(float64(total) / float64(size)))
 	page = 2
 	for page <= pageCnt {
 		listAlertsRequest.Page = &page
