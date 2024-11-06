@@ -70,6 +70,17 @@ var (
 		},
 	}
 
+	dingTalkMsgStats = &gcmd.Command{
+		Name:        "dingTalkMsgStats",
+		Usage:       "./go-tools dingTalkMsgStats",
+		Description: "钉钉消息发送统计",
+		Arguments:   []gcmd.Argument{},
+		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
+			service.Ding().Query(ctx, parser)
+			return
+		},
+	}
+
 	setGitlabProjectsMember = &gcmd.Command{
 		Name:        "setGitlabProjectsMember",
 		Usage:       "./go-tools setGitlabProjectsMember",
@@ -327,7 +338,17 @@ var (
 )
 
 func Init() {
-	err := _init.AddCommand(demo, setGitlabProjectsMember, gitClone, gitlabCommitStats, aliSlsAlerts, aliArmsPromAlerts, aliArmsAlertHistory, aliArmsAlertHistoryHourCron)
+	err := _init.AddCommand(
+		demo,
+		setGitlabProjectsMember,
+		gitClone,
+		gitlabCommitStats,
+		aliSlsAlerts,
+		aliArmsPromAlerts,
+		aliArmsAlertHistory,
+		aliArmsAlertHistoryHourCron,
+		dingTalkMsgStats,
+	)
 	if err != nil {
 		panic(err)
 	}

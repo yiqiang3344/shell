@@ -21,3 +21,4 @@ nohup.out
 **/config.xinfei.yaml
 *.xlsx
 *.log
+/resource/tmp/dingtalkSendMsgStats.json
