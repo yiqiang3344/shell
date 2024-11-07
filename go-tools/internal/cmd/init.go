@@ -8,7 +8,17 @@ import (
 )
 
 var (
-	gitlabCommonArs = []gcmd.Argument{
+	commonArs = []gcmd.Argument{
+		{
+			Name:   "debug",
+			Short:  "v",
+			Brief:  "打印debug信息。也可以在配置文件中设置，优先使用命令行参数。",
+			IsArg:  false,
+			Orphan: true,
+		},
+	}
+
+	gitlabCommonArs = append(commonArs, []gcmd.Argument{
 		{
 			Name:   "url",
 			Short:  "l",
@@ -23,14 +33,7 @@ var (
 			IsArg:  false,
 			Orphan: false,
 		},
-		{
-			Name:   "debug",
-			Short:  "v",
-			Brief:  "打印debug信息。也可以在配置文件中设置，优先使用命令行参数。",
-			IsArg:  false,
-			Orphan: true,
-		},
-	}
+	}...)
 
 	_init = gcmd.Command{
 		Usage:       "./go-tools 工具命令",
@@ -41,7 +44,7 @@ var (
 		Name:        "demo",
 		Usage:       "./go-tools demo",
 		Description: "示范demo",
-		Arguments: []gcmd.Argument{
+		Arguments: append(commonArs, []gcmd.Argument{
 			{
 				Name:   "argsA",
 				Short:  "a",
@@ -63,7 +66,7 @@ var (
 				IsArg:  true,
 				Orphan: false,
 			},
-		},
+		}...),
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
 			service.Demo().Demo(ctx, parser)
 			return
@@ -71,12 +74,47 @@ var (
 	}
 
 	dingTalkMsgStats = &gcmd.Command{
-		Name:        "dingTalkMsgStats",
-		Usage:       "./go-tools dingTalkMsgStats",
-		Description: "钉钉消息发送统计",
-		Arguments:   []gcmd.Argument{},
+		Name:  "dingTalkMsgStats",
+		Usage: "./go-tools dingTalkMsgStats",
+		Description: `拉取钉钉消息发送数量统计excel文件
+先登录钉钉管理后台，再进入如下页面: 
+https://open-dev.dingtalk.com/fe/sourceUseDetail?type=event&hash=%23%2F#/
+然后打开开发者工具，可看到是通过如下接口获取数据:
+https://open-dev.dingtalk.com/resource/queryWebhookUseInfo
+拿到token和cookie，再通过此命名工具可生成对应时间范围的excel文件。
+`,
+		Arguments: append(commonArs, []gcmd.Argument{
+			{
+				Name:   "startTime",
+				Short:  "s",
+				Brief:  "起始时间，Ymd格式。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "endTime",
+				Short:  "e",
+				Brief:  "截止时间，Ymd格式，当天数据无法查询。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "token",
+				Short:  "t",
+				Brief:  "token。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+			{
+				Name:   "cookie",
+				Short:  "c",
+				Brief:  "cookie。也可以在配置文件中设置，优先使用命令行参数。",
+				IsArg:  false,
+				Orphan: false,
+			},
+		}...),
 		Func: func(ctx context.Context, parser *gcmd.Parser) (err error) {
-			service.Ding().Query(ctx, parser)
+			service.Ding().SendMsgStats(ctx, parser)
 			return
 		},
 	}

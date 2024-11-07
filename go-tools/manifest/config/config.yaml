@@ -35,3 +35,9 @@ arms:
   accessKeyId: ""
   accessKeySecret: ""
   regionId: ""
+dingtalk:
+  sendMsgStats:
+    startTime: "" #Ymd格式
+    endTime: "" #Ymd格式
+    token: ""
+    cookie: ""

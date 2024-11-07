@@ -40,6 +40,7 @@
 - `./go-tools-mac aliArmsPromAlerts` 导出阿里云arms中promethues告警规则到excel文件。
 - `./go-tools-mac aliArmsAlertHistory` 导出阿里云arms告警记录到excel文件。
 - `./go-tools-mac aliArmsAlertHistoryHourCron` 每小时定时导出阿里云arms告警记录到excel文件。
+- `./go-tools-mac dingTalkMsgStats` 拉取钉钉消息发送数量统计excel文件。
 
 ### [go-tools-linux](go-tools-linux) go版本工具集linux系统版，详情同[go-tools-mac](go-tools-mac)
 

@@ -13,7 +13,7 @@ import (
 
 type (
 	IDing interface {
-		Query(ctx context.Context, parse *gcmd.Parser) (err error)
+		SendMsgStats(ctx context.Context, parse *gcmd.Parser)
 	}
 )
 
